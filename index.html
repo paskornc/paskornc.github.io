@@ -180,6 +180,15 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 #entry .seg { padding: 12px 18px 0; position: sticky; top: 57px; background: var(--bg); z-index: 1; padding-bottom: 12px; }
 #entry form { padding: 0 18px 18px; }
 #entry .grid { margin-top: 4px; }
+#entry .grid { grid-template-columns: repeat(auto-fit, minmax(136px, 1fr)); gap: 9px 12px; margin-top: 2px; }
+#entry .field { gap: 3px; }
+#entry label { font-size: .8rem; line-height: 1.35; }
+#entry input[type=text], #entry input[type=number], #entry input[type=date], #entry input[type=time], #entry select, #entry textarea { padding: 7px 9px; font-size: .95rem; }
+#entry textarea { min-height: 44px; }
+#entry .hint { font-size: .74rem; line-height: 1.35; }
+#entry form { padding: 0 18px 14px; }
+#entry .actions { margin-top: 10px; }
+#entry .exp-row { grid-template-columns: minmax(0, 1fr) 96px auto; }
 .exp-rows { display: flex; flex-direction: column; gap: 8px; }
 .exp-row { display: grid; grid-template-columns: minmax(0, 1fr) 120px auto; gap: 8px; align-items: center; }
 .exp-row input { width: 100%; }
@@ -369,6 +378,14 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
             <div class="field"><label for="p-meter">เลขมิเตอร์ไฟ ณ สิ้นสุดวัน (หน่วย)</label><input id="p-meter" type="number" inputmode="decimal" step="0.1" min="0" required><span class="hint" id="p-hint" aria-live="polite"></span></div>
             <div class="field"><label for="p-moist">ค่าความชื้น (%)</label><input id="p-moist" type="number" inputmode="decimal" step="0.1" min="0" max="100"></div>
             <div class="field"><label for="p-collector">ผู้เก็บข้อมูล</label><input id="p-collector" type="text" autocomplete="name" required></div>
+            <div class="field wide">
+              <label>ค่าใช้จ่ายอื่น ๆ</label>
+              <div class="exp-rows" id="p-expense-rows"></div>
+              <div class="actions">
+                <button type="button" class="small" id="p-expense-add">＋ เพิ่มรายการค่าใช้จ่าย</button>
+                <span class="hint" id="p-expense-hint" aria-live="polite"></span>
+              </div>
+            </div>
             <div class="field wide"><label for="p-note">หมายเหตุ</label><textarea id="p-note"></textarea></div>
           </div>
           <div class="actions" style="margin-top:16px">
@@ -632,28 +649,37 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
   $("entry-close").addEventListener("click", function () { closeEntry(); });
 
   /* ---------- ตารางสรุปเพื่อยืนยันก่อนบันทึก (checkout) ---------- */
-  var pendingChop = null;
-  function showCheckout(rec) {
-    var rows = [
-      ["หัวหน้างาน", nf(rec.foreman) + " คน × " + WAGE.foreman, rec.foreman * WAGE.foreman],
-      ["คนงาน", nf(rec.worker) + " คน × " + WAGE.worker, rec.worker * WAGE.worker],
-      ["คนงานชำนาญงาน", nf(rec.skilled) + " คน × " + WAGE.skilled, rec.skilled * WAGE.skilled],
-      ["ค่าล่วงเวลา", nf(rec.otHours, 1) + " ชม. × " + WAGE.ot, rec.otHours * WAGE.ot]
-    ];
-    var items = rec.items || [];
-    if (items.length) {
-      items.forEach(function (it) { rows.push([it.label || "ค่าใช้จ่ายอื่น ๆ", "ค่าใช้จ่าย", it.amount]); });
-    } else if (rec.expense) {
-      rows.push(["ค่าใช้จ่ายอื่น ๆ", "-", rec.expense]);
+  var pendingRec = null;
+  function showCheckout(kind, rec) {
+    var rows = [];
+    if (kind === "chop") {
+      rows.push(["หัวหน้างาน", nf(rec.foreman) + " คน × " + WAGE.foreman, rec.foreman * WAGE.foreman]);
+      rows.push(["คนงาน", nf(rec.worker) + " คน × " + WAGE.worker, rec.worker * WAGE.worker]);
+      rows.push(["คนงานชำนาญงาน", nf(rec.skilled) + " คน × " + WAGE.skilled, rec.skilled * WAGE.skilled]);
+      rows.push(["ค่าล่วงเวลา", nf(rec.otHours, 1) + " ชม. × " + WAGE.ot, rec.otHours * WAGE.ot]);
     }
+    (rec.items || []).forEach(function (it) {
+      rows.push([it.label || "ค่าใช้จ่ายอื่น ๆ", "ค่าใช้จ่าย", it.amount]);
+    });
+    if (!rows.length) rows.push(["ไม่มีค่าใช้จ่าย", "-", 0]);
     var total = 0;
     rows.forEach(function (r) { total += r[2]; });
 
     var meta = $("checkout-meta");
     meta.textContent = "";
-    [["วันที่", fmtDate(rec.date)], ["เวลา", rec.time],
-     ["ตะกร้าที่สับ", nf(rec.baskets) + " ตะกร้า"], ["เลขมิเตอร์ไฟ", nf(rec.meter, 1)],
-     ["คนงานรวม", nf(rec.workers) + " คน"]].forEach(function (p) {
+    var pairs = [["วันที่", fmtDate(rec.date)], ["เวลา", rec.time]];
+    if (kind === "chop") {
+      pairs.push(["ตะกร้าที่สับ", nf(rec.baskets) + " ตะกร้า"]);
+      pairs.push(["เลขมิเตอร์ไฟ", nf(rec.meter, 1)]);
+      pairs.push(["คนงานรวม", nf(rec.workers) + " คน"]);
+      pairs.push(["ค่าแรง", nf(rec.wage) + " บาท"]);
+    } else {
+      pairs.push(["ตะกร้าอัดเม็ด", nf(rec.baskets) + " ตะกร้า"]);
+      pairs.push(["เลขมิเตอร์ไฟ", nf(rec.meter, 1)]);
+      pairs.push(["ความชื้น", rec.moist != null ? nf(rec.moist, 1) + " %" : "-"]);
+      pairs.push(["ผู้เก็บข้อมูล", rec.collector || "-"]);
+    }
+    pairs.forEach(function (p) {
       meta.appendChild(el("div", null, p[0] + " ", el("strong", { text: p[1] })));
     });
 
@@ -675,9 +701,15 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
       el("td", { class: "num", text: nf(total) })));
     body.appendChild(el("table", { style: "min-width:0" }, el("thead", null, thead), tbody));
 
+    pendingRec = { kind: kind, rec: rec };
     $("checkout").hidden = false;
     document.querySelector("#entry .seg").hidden = true;
     Array.prototype.forEach.call(document.querySelectorAll("#entry [data-entry-panel]"), function (p) { p.hidden = true; });
+    $("checkout-confirm").hidden = false;
+    $("checkout-back").hidden = false;
+    $("checkout-again").hidden = true;
+    $("checkout-close").hidden = true;
+    $("checkout-done-note").hidden = true;
   }
   function hideCheckout() {
     $("checkout").hidden = true;
@@ -687,42 +719,66 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
     $("checkout-again").hidden = true;
     $("checkout-close").hidden = true;
     $("checkout-done-note").hidden = true;
-    pendingChop = null;
+    pendingRec = null;
     setEntry(activeTab === "plant" ? "chop" : "bale");
   }
   function resetChopForm() {
     ["c-baskets", "c-moist", "c-meter", "c-ot"].forEach(function (id) { $(id).value = ""; });
     ["c-foreman", "c-worker", "c-skilled"].forEach(function (id) { $(id).value = "0"; });
     $("expense-rows").textContent = "";
-    addExpenseRow();
+    addExpenseRow("expense-rows");
     chopDefaults();
     chopWageHint();
   }
+  function resetPelletForm() {
+    ["p-baskets", "p-meter", "p-moist", "p-note"].forEach(function (id) { $(id).value = ""; });
+    $("p-expense-rows").textContent = "";
+    addExpenseRow("p-expense-rows");
+    pelletDefaults();
+  }
   $("checkout-confirm").addEventListener("click", function () {
-    if (!pendingChop) return;
+    if (!pendingRec) return;
     if (!db) { toast("ยังเชื่อมต่อ Google Sheets ไม่ได้"); return; }
-    var rec = pendingChop, btn = this;
+    var job = pendingRec, rec = job.rec, btn = this;
     btn.disabled = true;
-    db.collection(CHOP).add({
-      date: rec.date, time: rec.time, baskets: rec.baskets, moist: rec.moist, meter: rec.meter,
-      foreman: rec.foreman, worker: rec.worker, skilled: rec.skilled, otHours: rec.otHours,
-      workers: rec.workers, wage: rec.wage, expense: rec.expense, expenseNote: rec.expenseNote,
-      createdAt: Date.now()
-    }).then(function () {
-      toast("บันทึกข้อมูลแล้ว · รวม " + nf(rec.wage + rec.expense) + " บาท");
-      pendingChop = null;
+    var payload;
+    if (job.kind === "chop") {
+      payload = {
+        date: rec.date, time: rec.time, baskets: rec.baskets, moist: rec.moist, meter: rec.meter,
+        foreman: rec.foreman, worker: rec.worker, skilled: rec.skilled, otHours: rec.otHours,
+        workers: rec.workers, wage: rec.wage, expense: rec.expense, expenseNote: rec.expenseNote,
+        createdAt: Date.now()
+      };
+    } else {
+      payload = {
+        date: rec.date, time: rec.time, baskets: rec.baskets, meter: rec.meter, moist: rec.moist,
+        collector: rec.collector, note: rec.note,
+        expense: rec.expense, expenseNote: rec.expenseNote, createdAt: Date.now()
+      };
+    }
+    db.collection(job.kind === "chop" ? CHOP : PELLET).add(payload).then(function () {
+      toast("บันทึกข้อมูลแล้ว");
+      pendingRec = null;
       $("checkout-confirm").hidden = true;
       $("checkout-back").hidden = true;
       $("checkout-again").hidden = false;
       $("checkout-close").hidden = false;
       $("checkout-done-note").hidden = false;
-      resetChopForm();
+      if (job.kind === "chop") resetChopForm(); else resetPelletForm();
     }, function (x) {
       toast(x && x.code === "quota_exceeded" ? "พื้นที่เก็บข้อมูลเต็ม" : "บันทึกไม่สำเร็จ ลองอีกครั้ง");
     }).then(function () { btn.disabled = false; });
   });
-  $("checkout-back").addEventListener("click", function () { hideCheckout(); setEntry("chop"); });
-  $("checkout-again").addEventListener("click", function () { hideCheckout(); setEntry("chop"); });
+  $("checkout-back").addEventListener("click", function () {
+    var kind = pendingRec ? pendingRec.kind : "chop";
+    hideCheckout();
+    setEntry(kind);
+  });
+  $("checkout-again").addEventListener("click", function () {
+    var kind = pendingRec ? pendingRec.kind : "chop";
+    hideCheckout();
+    setEntry(kind);
+  });
   $("checkout-close").addEventListener("click", function () { closeEntry(); });
 
   /* ---------- derived figures ---------- */
@@ -1354,23 +1410,23 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
     return (r.foreman || 0) * WAGE.foreman + (r.worker || 0) * WAGE.worker +
       (r.skilled || 0) * WAGE.skilled + (r.otHours || 0) * WAGE.ot;
   }
-  /* รายการค่าใช้จ่ายอื่น ๆ: ระบุว่าเป็นค่าอะไร พร้อมจำนวนเงิน (เพิ่มได้หลายบรรทัด) */
-  function expenseItems() {
+  /* รายการค่าใช้จ่ายอื่น ๆ: ระบุว่าเป็นค่าอะไร พร้อมจำนวนเงิน (ใช้ได้ทั้งงานสับและงานอัดเม็ด) */
+  function expenseItems(boxId) {
     var out = [];
-    Array.prototype.forEach.call(document.querySelectorAll("#expense-rows .exp-row"), function (r) {
+    Array.prototype.forEach.call(document.querySelectorAll("#" + boxId + " .exp-row"), function (r) {
       var label = r.querySelector(".exp-label").value.trim();
       var amt = Number(r.querySelector(".exp-amt").value) || 0;
       if (label || amt) out.push({ label: label, amount: amt });
     });
     return out;
   }
-  function expenseTotal() {
-    var t = 0; expenseItems().forEach(function (x) { t += x.amount; }); return t;
+  function expenseSum(list) {
+    var t = 0; (list || []).forEach(function (x) { t += x.amount; }); return t;
   }
-  function expenseNote() {
-    return expenseItems().map(function (x) { return (x.label || "ค่าใช้จ่าย") + " " + nf(x.amount); }).join(", ");
+  function expenseText(list) {
+    return (list || []).map(function (x) { return (x.label || "ค่าใช้จ่าย") + " " + nf(x.amount); }).join(", ");
   }
-  function addExpenseRow(label, amount) {
+  function addExpenseRow(boxId, label, amount) {
     var row = el("div", { class: "exp-row" });
     var l = el("input", { type: "text", class: "exp-label", placeholder: "ค่าใช้จ่ายอะไร เช่น น้ำมันเครื่อง" });
     var a = el("input", { type: "number", class: "exp-amt", inputmode: "decimal", step: "1", min: "0", placeholder: "บาท" });
@@ -1378,19 +1434,21 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
     if (amount != null) a.value = amount;
     var rm = el("button", { type: "button", class: "small", text: "×", title: "ลบรายการนี้" });
     rm.addEventListener("click", function () {
-      if (document.querySelectorAll("#expense-rows .exp-row").length <= 1) { l.value = ""; a.value = ""; }
+      if (document.querySelectorAll("#" + boxId + " .exp-row").length <= 1) { l.value = ""; a.value = ""; }
       else row.remove();
       chopWageHint();
     });
     [l, a].forEach(function (i) { i.addEventListener("input", chopWageHint); });
     row.appendChild(l); row.appendChild(a); row.appendChild(rm);
-    $("expense-rows").appendChild(row);
+    $(boxId).appendChild(row);
   }
-  $("expense-add").addEventListener("click", function () { addExpenseRow(); chopWageHint(); });
+  $("expense-add").addEventListener("click", function () { addExpenseRow("expense-rows"); chopWageHint(); });
+  $("p-expense-add").addEventListener("click", function () { addExpenseRow("p-expense-rows"); $("p-expense-hint").textContent = "รวม " + nf(expenseSum(expenseItems("p-expense-rows"))) + " บาท"; });
+
 
   function chopFormWage() {
     var f = numOrNull("c-foreman") || 0, w = numOrNull("c-worker") || 0;
-    var s = numOrNull("c-skilled") || 0, o = numOrNull("c-ot") || 0, e = expenseTotal();
+    var s = numOrNull("c-skilled") || 0, o = numOrNull("c-ot") || 0, e = expenseSum(expenseItems("expense-rows"));
     var wage = chopWage({ foreman: f, worker: w, skilled: s, otHours: o });
     return { total: f + w + s, wage: wage, expense: e, all: wage + e };
   }
@@ -1402,7 +1460,7 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
   ["c-foreman", "c-worker", "c-skilled", "c-ot"].forEach(function (id) {
     $(id).addEventListener("input", chopWageHint);
   });
-  addExpenseRow();
+  addExpenseRow("expense-rows");
   chopWageHint();
 
   function stampOf(r) { return (r.date || "") + " " + (r.time || ""); }
@@ -1555,7 +1613,7 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
     var baskets = numOrNull("c-baskets"), meter = numOrNull("c-meter");
     var foreman = numOrNull("c-foreman") || 0, worker = numOrNull("c-worker") || 0;
     var skilled = numOrNull("c-skilled") || 0, otHours = numOrNull("c-ot") || 0;
-    var expense = expenseTotal();
+    var expense = expenseSum(expenseItems("expense-rows"));
     if (!date || !time) { err.textContent = "กรอกวันที่และเวลา"; return; }
     if (baskets == null || baskets < 0) { err.textContent = "กรอกจำนวนตะกร้า"; $("c-baskets").focus(); return; }
     if (meter == null || meter < 0) { err.textContent = "กรอกเลขมิเตอร์ไฟ"; $("c-meter").focus(); return; }
@@ -1568,10 +1626,9 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
       foreman: foreman, worker: worker, skilled: skilled, otHours: otHours,
       workers: foreman + worker + skilled,
       wage: chopWage({ foreman: foreman, worker: worker, skilled: skilled, otHours: otHours }),
-      expense: expense, expenseNote: expenseNote(), items: expenseItems()
+      expense: expense, expenseNote: expenseText(expenseItems("expense-rows")), items: expenseItems("expense-rows")
     };
-    pendingChop = draft;
-    showCheckout(draft);
+    showCheckout("chop", draft);
   });
 
   /* ---------- task 2: pellet ---------- */
@@ -1615,9 +1672,9 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 
   function renderPellet() {
     var rows = pelletRows(), box = $("p-stats");
-    var baskets = 0, mw = 0, mb = 0, use = 0, useBaskets = 0, days = {};
+    var baskets = 0, mw = 0, mb = 0, use = 0, useBaskets = 0, expSum = 0, days = {};
     rows.forEach(function (r) {
-      baskets += r.baskets || 0; days[r.date] = 1;
+      baskets += r.baskets || 0; days[r.date] = 1; expSum += r.expense || 0;
       if (r.moist != null) { mw += r.moist * (r.baskets || 0); mb += r.baskets || 0; }
       if (r.use != null && r.use >= 0) { use += r.use; useBaskets += r.baskets || 0; }
     });
@@ -1626,6 +1683,7 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
       ["ความชื้นเฉลี่ย", mb ? nf(mw / mb, 1) : "-", mb ? "%" : ""],
       ["ไฟฟ้าที่ใช้รวม", rows.length > 1 ? nf(use, 1) : "-", rows.length > 1 ? "หน่วย" : ""],
       ["ไฟต่อตะกร้า", useBaskets ? nf(use / useBaskets, 2) : "-", useBaskets ? "หน่วย/ตะกร้า" : ""],
+      ["ค่าใช้จ่ายรวม", expSum ? nf(expSum) : "-", expSum ? "บาท" : ""],
       ["จำนวนวัน", nf(Object.keys(days).length), "วัน"]
     ];
     box.textContent = "";
@@ -1643,9 +1701,9 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
       pelletHint();
       return;
     }
-    var heads = ["วันที่", "เวลา", "ตะกร้า", "ความชื้น (%)", "เลขมิเตอร์", "ไฟที่ใช้ (หน่วย)", "ผู้เก็บข้อมูล", "หมายเหตุ", ""];
+    var heads = ["วันที่", "เวลา", "ตะกร้า", "ความชื้น (%)", "เลขมิเตอร์", "ไฟที่ใช้ (หน่วย)", "ผู้เก็บข้อมูล", "หมายเหตุ", "ค่าใช้จ่าย (บาท)", ""];
     var thead = el("tr");
-    heads.forEach(function (h, i) { thead.appendChild(el("th", { class: i >= 2 && i <= 5 ? "num" : "", text: h })); });
+    heads.forEach(function (h, i) { thead.appendChild(el("th", { class: i >= 2 && i <= 5 || i === 8 ? "num" : "", text: h })); });
     var tbody = el("tbody");
     rows.reverse().forEach(function (r) {
       var del = el("td");
@@ -1669,6 +1727,7 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
         useCell,
         el("td", { text: r.collector || "" }),
         el("td", { text: r.note || "" }),
+        el("td", { class: "num" }, nf(r.expense || 0), r.expenseNote ? el("div", { class: "hint", style: "white-space:normal", text: r.expenseNote }) : null),
         del));
     });
     wrap.appendChild(el("table", { style: "min-width:760px" }, el("thead", null, thead), tbody));
@@ -1676,8 +1735,8 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
   }
 
   $("dl-pellet").addEventListener("click", function () {
-    var rows = [["วันที่", "เวลา", "จำนวนตะกร้าชีวมวลอัดเม็ด", "ค่าความชื้น (%)", "เลขมิเตอร์ไฟ", "ไฟที่ใช้ (หน่วย)", "ผู้เก็บข้อมูล", "หมายเหตุ"]];
-    pelletRows().forEach(function (r) { rows.push([r.date, r.time, r.baskets, r.moist, r.meter, r.use, r.collector, r.note || ""]); });
+    var rows = [["วันที่", "เวลา", "จำนวนตะกร้าชีวมวลอัดเม็ด", "ค่าความชื้น (%)", "เลขมิเตอร์ไฟ", "ไฟที่ใช้ (หน่วย)", "ผู้เก็บข้อมูล", "หมายเหตุ", "ค่าใช้จ่าย (บาท)", "รายละเอียดค่าใช้จ่าย"]];
+    pelletRows().forEach(function (r) { rows.push([r.date, r.time, r.baskets, r.moist, r.meter, r.use, r.collector, r.note || "", r.expense || 0, r.expenseNote || ""]); });
     save("งานอัดเม็ดชีวมวล-ข้อมูลทั้งหมด.csv", toCsv(rows));
   });
 
@@ -1694,15 +1753,12 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
     if (!collector) { err.textContent = "กรอกชื่อผู้เก็บข้อมูล"; $("p-collector").focus(); return; }
     var st = date + " " + time, prev = prevMeterBefore(st);
     if (prev && meter < prev.rec.meter) { err.textContent = "เลขมิเตอร์น้อยกว่าครั้งก่อน (" + nf(prev.rec.meter, 1) + " · " + meterSource(prev.kind) + " " + fmtDate(prev.rec.date) + ") ตรวจสอบก่อนบันทึก"; $("p-meter").focus(); return; }
-    var btn = $("p-submit"); btn.disabled = true;
-    db.collection(PELLET).add({ date: date, time: time, baskets: baskets, meter: meter, moist: numOrNull("p-moist"), collector: collector, note: $("p-note").value.trim(), createdAt: Date.now() }).then(function () {
-      toast("บันทึกข้อมูลแล้ว");
-      closeEntry();
-      ["p-baskets", "p-meter", "p-moist", "p-note"].forEach(function (id) { $(id).value = ""; });
-      pelletDefaults();
-    }, function (x) {
-      err.textContent = x && x.code === "quota_exceeded" ? "พื้นที่เก็บข้อมูลเต็ม" : "บันทึกไม่สำเร็จ ลองอีกครั้ง";
-    }).then(function () { btn.disabled = !canWrite; });
+    var pItems = expenseItems("p-expense-rows");
+    showCheckout("pellet", {
+      date: date, time: time, baskets: baskets, meter: meter, moist: numOrNull("p-moist"),
+      collector: collector, note: $("p-note").value.trim(),
+      expense: expenseSum(pItems), expenseNote: expenseText(pItems), items: pItems
+    });
   });
 
   /* ---------- start ---------- */
@@ -1715,6 +1771,7 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
   nowDefaults();
   chopDefaults();
   pelletDefaults();
+  addExpenseRow("p-expense-rows");
   showTab("bale");
   renderAll();
   renderChop();
