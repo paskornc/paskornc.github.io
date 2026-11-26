@@ -855,13 +855,19 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
       }
       function applyView() {
         vg.setAttribute("transform", "translate(" + mapView.x.toFixed(2) + " " + mapView.y.toFixed(2) + ") scale(" + mapView.k.toFixed(4) + ")");
+        /* ตัวอักษรในแปลงขยาย/ย่อตามการซูม (มีเพดาน 2.5 เท่าเพื่อไม่ให้ล้ำแปลงเกินไป) */
+        var f = Math.min(2.5, Math.max(1, mapView.k));
         labelPts.forEach(function (l) {
           var X = l.x * mapView.k + mapView.x, Y = l.y * mapView.k + mapView.y;
           l.el.setAttribute("x", X.toFixed(1));
-          l.el.setAttribute("y", (Y + 3).toFixed(1));
+          l.el.setAttribute("y", (Y + 3 * f).toFixed(1));
+          l.el.setAttribute("font-size", (10 * f).toFixed(1));
+          l.el.setAttribute("stroke-width", (3 * f).toFixed(2));
           if (l.elPct) {
             l.elPct.setAttribute("x", X.toFixed(1));
-            l.elPct.setAttribute("y", (Y + 14).toFixed(1));
+            l.elPct.setAttribute("y", (Y + 14 * f).toFixed(1));
+            l.elPct.setAttribute("font-size", (9 * f).toFixed(1));
+            l.elPct.setAttribute("stroke-width", (3 * f).toFixed(2));
           }
         });
       }
@@ -898,7 +904,12 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
         mapView.x = W / 2 - ((lo + hi) / 2) * mapView.k;
         mapView.y = H / 2 - ((za + zb) / 2) * mapView.k;
       }
-      if (!mapView.inited) { mapView.inited = true; fitParcels(["P01", "P02"]); }
+      if (!mapView.inited) {
+        mapView.inited = true;
+        var firstIds = [];
+        for (var pi = 1; pi <= 15; pi++) firstIds.push("P" + (pi < 10 ? "0" + pi : pi));
+        fitParcels(firstIds);
+      }
       clampView();
       applyView();
 
