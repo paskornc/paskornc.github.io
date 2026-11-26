@@ -180,6 +180,10 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 #entry .seg { padding: 12px 18px 0; position: sticky; top: 57px; background: var(--bg); z-index: 1; padding-bottom: 12px; }
 #entry form { padding: 0 18px 18px; }
 #entry .grid { margin-top: 4px; }
+.exp-rows { display: flex; flex-direction: column; gap: 8px; }
+.exp-row { display: grid; grid-template-columns: minmax(0, 1fr) 120px auto; gap: 8px; align-items: center; }
+.exp-row input { width: 100%; }
+.exp-row button { padding: 8px 12px; }
 #checkout { padding: 0 18px 18px; display: flex; flex-direction: column; gap: 10px; }
 #checkout[hidden] { display: none; }
 .co-h { font-size: 1.05rem; }
@@ -295,12 +299,15 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
     <button type="button" class="segbtn" data-entry="pellet" aria-pressed="false">งานอัดเม็ด</button>
   </div>
   <div id="checkout" hidden>
-    <h3 class="co-h">สรุปการบันทึก</h3>
+    <h3 class="co-h">ตรวจสอบก่อนบันทึก</h3>
     <div class="co-meta" id="checkout-meta"></div>
     <div class="tablewrap" id="checkout-body"></div>
+    <p class="hint" id="checkout-done-note" hidden>บันทึกเข้าชีตแล้ว</p>
     <div class="actions" style="margin-top:14px">
-      <button type="button" class="primary" id="checkout-again">บันทึกอีกรายการ</button>
-      <button type="button" id="checkout-close">เสร็จสิ้น</button>
+      <button type="button" class="primary" id="checkout-confirm">ยืนยันบันทึก</button>
+      <button type="button" id="checkout-back">แก้ไข</button>
+      <button type="button" class="primary" id="checkout-again" hidden>บันทึกอีกรายการ</button>
+      <button type="button" id="checkout-close" hidden>เสร็จสิ้น</button>
     </div>
   </div>
   <div data-entry-panel="bale">
@@ -338,7 +345,14 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
             <div class="field"><label for="c-worker">คนงาน (คน · 350 บาท/วัน)</label><input id="c-worker" type="number" inputmode="numeric" step="1" min="0" value="0"></div>
             <div class="field"><label for="c-skilled">คนงานชำนาญงาน (คน · 400 บาท/วัน)</label><input id="c-skilled" type="number" inputmode="numeric" step="1" min="0" value="0"></div>
             <div class="field"><label for="c-ot">ค่าล่วงเวลา (ชม. · 100 บาท/ชม.)</label><input id="c-ot" type="number" inputmode="decimal" step="0.5" min="0" value="0"></div>
-            <div class="field"><label for="c-expense">ค่าใช้จ่ายอื่น ๆ (บาท)</label><input id="c-expense" type="number" inputmode="decimal" step="1" min="0" value="0"><span class="hint" id="c-wage-hint" aria-live="polite"></span></div>
+            <div class="field wide">
+              <label>ค่าใช้จ่ายอื่น ๆ</label>
+              <div class="exp-rows" id="expense-rows"></div>
+              <div class="actions">
+                <button type="button" class="small" id="expense-add">＋ เพิ่มรายการค่าใช้จ่าย</button>
+                <span class="hint" id="c-wage-hint" aria-live="polite"></span>
+              </div>
+            </div>
           </div>
           <div class="actions" style="margin-top:16px">
             <button type="submit" class="primary" id="c-submit">บันทึกข้อมูล</button>
@@ -617,15 +631,21 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
   });
   $("entry-close").addEventListener("click", function () { closeEntry(); });
 
-  /* ---------- ตารางสรุปหลังบันทึก (checkout) ---------- */
+  /* ---------- ตารางสรุปเพื่อยืนยันก่อนบันทึก (checkout) ---------- */
+  var pendingChop = null;
   function showCheckout(rec) {
     var rows = [
       ["หัวหน้างาน", nf(rec.foreman) + " คน × " + WAGE.foreman, rec.foreman * WAGE.foreman],
       ["คนงาน", nf(rec.worker) + " คน × " + WAGE.worker, rec.worker * WAGE.worker],
       ["คนงานชำนาญงาน", nf(rec.skilled) + " คน × " + WAGE.skilled, rec.skilled * WAGE.skilled],
-      ["ค่าล่วงเวลา", nf(rec.otHours, 1) + " ชม. × " + WAGE.ot, rec.otHours * WAGE.ot],
-      ["ค่าใช้จ่ายอื่น ๆ", "-", rec.expense || 0]
+      ["ค่าล่วงเวลา", nf(rec.otHours, 1) + " ชม. × " + WAGE.ot, rec.otHours * WAGE.ot]
     ];
+    var items = rec.items || [];
+    if (items.length) {
+      items.forEach(function (it) { rows.push([it.label || "ค่าใช้จ่ายอื่น ๆ", "ค่าใช้จ่าย", it.amount]); });
+    } else if (rec.expense) {
+      rows.push(["ค่าใช้จ่ายอื่น ๆ", "-", rec.expense]);
+    }
     var total = 0;
     rows.forEach(function (r) { total += r[2]; });
 
@@ -662,8 +682,46 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
   function hideCheckout() {
     $("checkout").hidden = true;
     document.querySelector("#entry .seg").hidden = false;
+    $("checkout-confirm").hidden = false;
+    $("checkout-back").hidden = false;
+    $("checkout-again").hidden = true;
+    $("checkout-close").hidden = true;
+    $("checkout-done-note").hidden = true;
+    pendingChop = null;
     setEntry(activeTab === "plant" ? "chop" : "bale");
   }
+  function resetChopForm() {
+    ["c-baskets", "c-moist", "c-meter", "c-ot"].forEach(function (id) { $(id).value = ""; });
+    ["c-foreman", "c-worker", "c-skilled"].forEach(function (id) { $(id).value = "0"; });
+    $("expense-rows").textContent = "";
+    addExpenseRow();
+    chopDefaults();
+    chopWageHint();
+  }
+  $("checkout-confirm").addEventListener("click", function () {
+    if (!pendingChop) return;
+    if (!db) { toast("ยังเชื่อมต่อ Google Sheets ไม่ได้"); return; }
+    var rec = pendingChop, btn = this;
+    btn.disabled = true;
+    db.collection(CHOP).add({
+      date: rec.date, time: rec.time, baskets: rec.baskets, moist: rec.moist, meter: rec.meter,
+      foreman: rec.foreman, worker: rec.worker, skilled: rec.skilled, otHours: rec.otHours,
+      workers: rec.workers, wage: rec.wage, expense: rec.expense, expenseNote: rec.expenseNote,
+      createdAt: Date.now()
+    }).then(function () {
+      toast("บันทึกข้อมูลแล้ว · รวม " + nf(rec.wage + rec.expense) + " บาท");
+      pendingChop = null;
+      $("checkout-confirm").hidden = true;
+      $("checkout-back").hidden = true;
+      $("checkout-again").hidden = false;
+      $("checkout-close").hidden = false;
+      $("checkout-done-note").hidden = false;
+      resetChopForm();
+    }, function (x) {
+      toast(x && x.code === "quota_exceeded" ? "พื้นที่เก็บข้อมูลเต็ม" : "บันทึกไม่สำเร็จ ลองอีกครั้ง");
+    }).then(function () { btn.disabled = false; });
+  });
+  $("checkout-back").addEventListener("click", function () { hideCheckout(); setEntry("chop"); });
   $("checkout-again").addEventListener("click", function () { hideCheckout(); setEntry("chop"); });
   $("checkout-close").addEventListener("click", function () { closeEntry(); });
 
@@ -1296,9 +1354,43 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
     return (r.foreman || 0) * WAGE.foreman + (r.worker || 0) * WAGE.worker +
       (r.skilled || 0) * WAGE.skilled + (r.otHours || 0) * WAGE.ot;
   }
+  /* รายการค่าใช้จ่ายอื่น ๆ: ระบุว่าเป็นค่าอะไร พร้อมจำนวนเงิน (เพิ่มได้หลายบรรทัด) */
+  function expenseItems() {
+    var out = [];
+    Array.prototype.forEach.call(document.querySelectorAll("#expense-rows .exp-row"), function (r) {
+      var label = r.querySelector(".exp-label").value.trim();
+      var amt = Number(r.querySelector(".exp-amt").value) || 0;
+      if (label || amt) out.push({ label: label, amount: amt });
+    });
+    return out;
+  }
+  function expenseTotal() {
+    var t = 0; expenseItems().forEach(function (x) { t += x.amount; }); return t;
+  }
+  function expenseNote() {
+    return expenseItems().map(function (x) { return (x.label || "ค่าใช้จ่าย") + " " + nf(x.amount); }).join(", ");
+  }
+  function addExpenseRow(label, amount) {
+    var row = el("div", { class: "exp-row" });
+    var l = el("input", { type: "text", class: "exp-label", placeholder: "ค่าใช้จ่ายอะไร เช่น น้ำมันเครื่อง" });
+    var a = el("input", { type: "number", class: "exp-amt", inputmode: "decimal", step: "1", min: "0", placeholder: "บาท" });
+    if (label) l.value = label;
+    if (amount != null) a.value = amount;
+    var rm = el("button", { type: "button", class: "small", text: "×", title: "ลบรายการนี้" });
+    rm.addEventListener("click", function () {
+      if (document.querySelectorAll("#expense-rows .exp-row").length <= 1) { l.value = ""; a.value = ""; }
+      else row.remove();
+      chopWageHint();
+    });
+    [l, a].forEach(function (i) { i.addEventListener("input", chopWageHint); });
+    row.appendChild(l); row.appendChild(a); row.appendChild(rm);
+    $("expense-rows").appendChild(row);
+  }
+  $("expense-add").addEventListener("click", function () { addExpenseRow(); chopWageHint(); });
+
   function chopFormWage() {
     var f = numOrNull("c-foreman") || 0, w = numOrNull("c-worker") || 0;
-    var s = numOrNull("c-skilled") || 0, o = numOrNull("c-ot") || 0, e = numOrNull("c-expense") || 0;
+    var s = numOrNull("c-skilled") || 0, o = numOrNull("c-ot") || 0, e = expenseTotal();
     var wage = chopWage({ foreman: f, worker: w, skilled: s, otHours: o });
     return { total: f + w + s, wage: wage, expense: e, all: wage + e };
   }
@@ -1310,6 +1402,7 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
   ["c-foreman", "c-worker", "c-skilled", "c-ot"].forEach(function (id) {
     $(id).addEventListener("input", chopWageHint);
   });
+  addExpenseRow();
   chopWageHint();
 
   function stampOf(r) { return (r.date || "") + " " + (r.time || ""); }
@@ -1437,7 +1530,7 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
         el("td", { class: "num", text: nf(r.skilled || 0) }),
         el("td", { class: "num", text: r.otHours != null ? nf(r.otHours, 1) : "-" }),
         el("td", { class: "num", text: nf(r.wage != null ? r.wage : chopWage(r)) }),
-        el("td", { class: "num", text: nf(r.expense || 0) }),
+        el("td", { class: "num" }, nf(r.expense || 0), r.expenseNote ? el("div", { class: "hint", style: "white-space:normal", text: r.expenseNote }) : null),
         el("td", { class: "num", text: nf((r.wage != null ? r.wage : chopWage(r)) + (r.expense || 0)) }),
         del));
     });
@@ -1446,10 +1539,10 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
   }
 
   $("dl-chop").addEventListener("click", function () {
-    var rows = [["วันที่", "เวลา", "จำนวนตะกร้า", "ค่าความชื้น (%)", "เลขมิเตอร์ไฟ", "ไฟที่ใช้ (หน่วย)", "หัวหน้างาน", "คนงาน", "คนงานชำนาญงาน", "ชั่วโมงล่วงเวลา", "ค่าแรง (บาท)", "ค่าใช้จ่าย (บาท)", "รวม (บาท)"]];
+    var rows = [["วันที่", "เวลา", "จำนวนตะกร้า", "ค่าความชื้น (%)", "เลขมิเตอร์ไฟ", "ไฟที่ใช้ (หน่วย)", "หัวหน้างาน", "คนงาน", "คนงานชำนาญงาน", "ชั่วโมงล่วงเวลา", "ค่าแรง (บาท)", "ค่าใช้จ่าย (บาท)", "รายละเอียดค่าใช้จ่าย", "รวม (บาท)"]];
     chopRows().forEach(function (r) {
       var w = r.wage != null ? r.wage : chopWage(r), e = r.expense || 0;
-      rows.push([r.date, r.time, r.baskets, r.moist, r.meter, r.use, r.foreman || 0, r.worker || 0, r.skilled || 0, r.otHours || 0, w, e, w + e]);
+      rows.push([r.date, r.time, r.baskets, r.moist, r.meter, r.use, r.foreman || 0, r.worker || 0, r.skilled || 0, r.otHours || 0, w, e, r.expenseNote || "", w + e]);
     });
     save("งานสับชีวมวล-ข้อมูลทั้งหมด.csv", toCsv(rows));
   });
@@ -1462,32 +1555,23 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
     var baskets = numOrNull("c-baskets"), meter = numOrNull("c-meter");
     var foreman = numOrNull("c-foreman") || 0, worker = numOrNull("c-worker") || 0;
     var skilled = numOrNull("c-skilled") || 0, otHours = numOrNull("c-ot") || 0;
-    var expense = numOrNull("c-expense") || 0;
+    var expense = expenseTotal();
     if (!date || !time) { err.textContent = "กรอกวันที่และเวลา"; return; }
     if (baskets == null || baskets < 0) { err.textContent = "กรอกจำนวนตะกร้า"; $("c-baskets").focus(); return; }
     if (meter == null || meter < 0) { err.textContent = "กรอกเลขมิเตอร์ไฟ"; $("c-meter").focus(); return; }
     if (foreman + worker + skilled <= 0) { err.textContent = "กรอกจำนวนคนงานอย่างน้อย 1 คน"; $("c-foreman").focus(); return; }
     var st = date + " " + time, prev = prevMeterBefore(st);
     if (prev && meter < prev.rec.meter) { err.textContent = "เลขมิเตอร์น้อยกว่าครั้งก่อน (" + nf(prev.rec.meter, 1) + " · " + meterSource(prev.kind) + " " + fmtDate(prev.rec.date) + ") ตรวจสอบก่อนบันทึก"; $("c-meter").focus(); return; }
-    var btn = $("c-submit"); btn.disabled = true;
-    var totalPeople = foreman + worker + skilled;
-    var wage = chopWage({ foreman: foreman, worker: worker, skilled: skilled, otHours: otHours });
-    var saved = {
+    /* ยังไม่บันทึกจริง — ให้ยืนยันในหน้า checkout ก่อน */
+    var draft = {
       date: date, time: time, baskets: baskets, moist: numOrNull("c-moist"), meter: meter,
       foreman: foreman, worker: worker, skilled: skilled, otHours: otHours,
-      workers: totalPeople, wage: wage, expense: expense
+      workers: foreman + worker + skilled,
+      wage: chopWage({ foreman: foreman, worker: worker, skilled: skilled, otHours: otHours }),
+      expense: expense, expenseNote: expenseNote(), items: expenseItems()
     };
-    var payload = Object.assign({}, saved, { createdAt: Date.now() });
-    db.collection(CHOP).add(payload).then(function () {
-      toast("บันทึกข้อมูลแล้ว · รวม " + nf(wage + expense) + " บาท");
-      showCheckout(saved);
-      ["c-baskets", "c-moist", "c-meter", "c-ot", "c-expense"].forEach(function (id) { $(id).value = ""; });
-      ["c-foreman", "c-worker", "c-skilled"].forEach(function (id) { $(id).value = "0"; });
-      chopDefaults();
-      chopWageHint();
-    }, function (x) {
-      err.textContent = x && x.code === "quota_exceeded" ? "พื้นที่เก็บข้อมูลเต็ม" : "บันทึกไม่สำเร็จ ลองอีกครั้ง";
-    }).then(function () { btn.disabled = !canWrite; });
+    pendingChop = draft;
+    showCheckout(draft);
   });
 
   /* ---------- task 2: pellet ---------- */

@@ -52,6 +52,7 @@ var CHOP_COLS = [
   ['คนงานชำนาญงาน (คน)', 'skilled', 'num'],
   ['ค่าล่วงเวลา (ชม.)', 'otHours', 'num'],
   ['ค่าใช้จ่าย (บาท)', 'expense', 'num'],
+  ['รายละเอียดค่าใช้จ่าย', 'expenseNote', 'text'],
   ['จำนวนคนงานรวม', 'workers', 'num'],
   ['ค่าแรง (บาท)', 'wage', 'num'],
   ['สร้างเมื่อ', 'createdAt', 'num'],
