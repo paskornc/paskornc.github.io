@@ -42,7 +42,8 @@ var BALE_COLS = [
   ['เก็บเกี่ยวเสร็จสิ้น', 'done', 'bool'],
   ['หมายเหตุ', 'note', 'text'],
   ['สร้างเมื่อ', 'createdAt', 'num'],
-  ['id', 'id', 'text']
+  ['id', 'id', 'text'],
+  ['ประเภทงาน', 'dayWork', 'text']
 ];
 
 var CHOP_COLS = [

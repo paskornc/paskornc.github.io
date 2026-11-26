@@ -329,7 +329,7 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
           <div class="field"><label for="f-weight">น้ำหนักเฉลี่ยต่อก้อน (กก.)</label><input id="f-weight" type="number" inputmode="decimal" step="0.1" min="0" required></div>
           <div class="field"><label for="f-moist">ค่าความชื้น ณ ตอนเก็บ (%)</label><input id="f-moist" type="number" inputmode="decimal" step="0.1" min="0" max="100"></div>
           <div class="field"><label for="f-fuel">น้ำมันที่ใช้ (ลิตร × 50 บาท)</label><input id="f-fuel" type="number" inputmode="decimal" step="0.1" min="0"></div>
-          <div class="field"><label for="f-daycost">ค่าแรงงาน+เครื่องจักร (บาท/วัน)</label><input id="f-daycost" type="number" inputmode="decimal" step="1" min="0" value="1800"></div>
+          <div class="field"><label for="f-daytype">ประเภทงาน (ค่าแรง+เครื่อง/วัน)</label><select id="f-daytype"><option value="1800">งานตัดอัดก้อน 1,800 บาท/วัน</option><option value="1200">งานขนชีวมวล 1,200 บาท/วัน</option></select></div>
           <div class="field"><label for="f-rolls">ม้วนเชือก (ม้วน × 450 บาท)</label><input id="f-rolls" type="number" inputmode="numeric" step="1" min="0" value="0"></div>
           <div class="field wide"><span class="hint" id="f-cost-hint" aria-live="polite"></span></div>
           <div class="field"><label for="f-collector">ผู้เก็บข้อมูล</label><input id="f-collector" type="text" autocomplete="name" required></div>
@@ -1337,9 +1337,9 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
     });
   }
   $("dl-csv").addEventListener("click", function () {
-    var rows = [["วันที่", "เวลา", "แปลง", "ละติจูด", "ลองจิจูด", "จำนวนไร่", "จำนวนก้อน", "น้ำหนักเฉลี่ยต่อก้อน (กก.)", "น้ำหนักรวม (กก.)", "ค่าความชื้น (%)", "น้ำมันที่ใช้ (ลิตร)", "ค่าแรง+เครื่อง (บาท/วัน)", "ม้วนเชือก", "ค่าใช้จ่ายรวม (บาท)", "รายละเอียดค่าใช้จ่าย", "ผู้เก็บข้อมูล", "เก็บเกี่ยวเสร็จสิ้น", "หมายเหตุ"]];
+    var rows = [["วันที่", "เวลา", "แปลง", "ละติจูด", "ลองจิจูด", "จำนวนไร่", "จำนวนก้อน", "น้ำหนักเฉลี่ยต่อก้อน (กก.)", "น้ำหนักรวม (กก.)", "ค่าความชื้น (%)", "น้ำมันที่ใช้ (ลิตร)", "ประเภทงาน", "ค่าแรง+เครื่อง (บาท/วัน)", "ม้วนเชือก", "ค่าใช้จ่ายรวม (บาท)", "รายละเอียดค่าใช้จ่าย", "ผู้เก็บข้อมูล", "เก็บเกี่ยวเสร็จสิ้น", "หมายเหตุ"]];
     sorted().reverse().forEach(function (r) {
-      rows.push([r.date, r.time, r.plot || "", r.lat, r.lng, r.rai, r.bales, r.weight, (r.bales || 0) * (r.weight || 0), r.moist, r.fuel, r.dayCost, r.rolls, r.expense || 0, r.expenseNote || "", r.collector, r.done ? "ใช่" : "", r.note || ""]);
+      rows.push([r.date, r.time, r.plot || "", r.lat, r.lng, r.rai, r.bales, r.weight, (r.bales || 0) * (r.weight || 0), r.moist, r.fuel, r.dayWork || "", r.dayCost, r.rolls, r.expense || 0, r.expenseNote || "", r.collector, r.done ? "ใช่" : "", r.note || ""]);
     });
     save("ตัดอัดก้อนชีวมวล-ข้อมูลทั้งหมด.csv", toCsv(rows));
   });
@@ -1364,8 +1364,11 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 
   /* ค่าใช้จ่ายรายวันของงานอัดก้อน: ค่าแรง+เครื่อง/วัน, น้ำมันลิตรละ 50, เชือกม้วนละ 450 */
   var BALE_COST = { day: 1800, fuel: 50, rope: 450 };
+  var BALE_DAY_TYPES = { "1800": "งานตัดอัดก้อน", "1200": "งานขนชีวมวล" };
+  function baleDayType() { return $("f-daytype").value; }
+  function baleDayWork() { return BALE_DAY_TYPES[baleDayType()] || ""; }
   function baleCost() {
-    var day = numOrNull("f-daycost"); if (day == null) day = 0;
+    var day = Number(baleDayType()) || 0;
     var liters = numOrNull("f-fuel") || 0, rolls = numOrNull("f-rolls") || 0;
     var fuelCost = liters * BALE_COST.fuel, ropeCost = rolls * BALE_COST.rope;
     return { day: day, liters: liters, fuelCost: fuelCost, rolls: rolls, ropeCost: ropeCost,
@@ -1373,20 +1376,21 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
   }
   function baleCostNote() {
     var c = baleCost(), parts = [];
-    if (c.day) parts.push("ค่าแรง+เครื่อง " + nf(c.day));
+    if (c.day) parts.push(baleDayWork() + " " + nf(c.day));
     if (c.liters) parts.push("น้ำมัน " + nf(c.liters, 1) + " ลิตร " + nf(c.fuelCost));
     if (c.rolls) parts.push("เชือก " + nf(c.rolls) + " ม้วน " + nf(c.ropeCost));
     return parts.join(", ");
   }
   function baleCostHint() {
     var c = baleCost();
-    $("f-cost-hint").textContent = "ค่าแรง+เครื่อง " + nf(c.day) + " + น้ำมัน " + nf(c.liters, 1) +
+    $("f-cost-hint").textContent = baleDayWork() + " " + nf(c.day) + " + น้ำมัน " + nf(c.liters, 1) +
       " ลิตร × " + BALE_COST.fuel + " = " + nf(c.fuelCost) + " + เชือก " + nf(c.rolls) +
       " ม้วน × " + BALE_COST.rope + " = " + nf(c.ropeCost) + " · รวม " + nf(c.total) + " บาท";
   }
-  ["f-daycost", "f-fuel", "f-rolls"].forEach(function (id) {
+  ["f-fuel", "f-rolls"].forEach(function (id) {
     $(id).addEventListener("input", baleCostHint);
   });
+  $("f-daytype").addEventListener("change", baleCostHint);
 
   $("form").addEventListener("submit", function (e) {
     e.preventDefault();
@@ -1411,7 +1415,7 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
     var doc = {
       date: date, time: time, rai: rai, bales: bales, weight: weight,
       moist: numOrNull("f-moist"), fuel: bc.liters,
-      dayCost: bc.day, fuelCost: bc.fuelCost, rolls: bc.rolls, ropeCost: bc.ropeCost,
+      dayCost: bc.day, dayWork: baleDayWork(), fuelCost: bc.fuelCost, rolls: bc.rolls, ropeCost: bc.ropeCost,
       expense: bc.total, expenseNote: baleCostNote(),
       collector: collector, note: $("f-note").value.trim(),
       plot: plot, parcel: parcelId, lat: coord ? coord.lat : null, lng: coord ? coord.lng : null,
@@ -1422,7 +1426,7 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
       toast("บันทึกข้อมูลแล้ว");
       closeEntry();
       ["f-rai", "f-bales", "f-weight", "f-moist", "f-fuel", "f-note", "f-rolls"].forEach(function (id) { $(id).value = ""; });
-      $("f-daycost").value = BALE_COST.day;
+      $("f-daytype").value = "1800";
       $("f-done").checked = false;
       baleCostHint();
       nowDefaults();
