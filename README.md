@@ -11,8 +11,31 @@
 | `index.html` | หน้าเว็บทั้งหมด (HTML/CSS/JS) |
 | `sat.jpg` | ภาพดาวเทียมที่ใช้เป็นพื้นหลังแผนที่แปลง |
 | `Code.gs` | โค้ด Apps Script ที่ทำหน้าที่เป็น backend อ่าน/เขียน Google Sheets |
+| `appsscript.json` | manifest ของโปรเจกต์ Apps Script (เขตเวลา + ตั้งค่า Web App) |
+| `.clasp.json` | ผูกโฟลเดอร์นี้กับโปรเจกต์ Apps Script (scriptId) |
+| `.claspignore` | จำกัดไฟล์ที่ `clasp push` ส่งขึ้น (เอาเฉพาะ `Code.gs`, `appsscript.json`) |
 
-## ขั้นตอนที่ 1 — สร้าง Google Sheets + Apps Script
+## สถานะการติดตั้ง (ติดตั้งผ่าน clasp แล้ว)
+
+| รายการ | ค่า |
+|---|---|
+| Google Sheets (ฐานข้อมูล) | `1O2FzRic5rlMiX0kYvYroSbRWurKI6IpzKHTKsDli_nI` |
+| Apps Script project | `1q5cNOjoc6W-E-s_Sfd-L7PPkifjJFVDZLwUsjGo8FxdLwwgP2ORqHyEv` |
+| Web App URL (deployment `v1`) | `https://script.google.com/macros/s/AKfycbyESQnbxczJ72sap7E5wStL31v7rkHWpFyomEd3Zc_d3OcBSXXJBA2hbNeBgqoamEtv/exec` |
+
+URL นี้ถูกใส่ไว้ใน `index.html` แล้วที่ตัวแปร `API_URL`
+
+### แก้ backend แล้วอัปเดต
+
+```bash
+bun x @google/clasp@2.4.2 push --force   # ส่ง Code.gs / appsscript.json ขึ้น Apps Script
+bun x @google/clasp@2.4.2 redeploy       # อัปเดต deployment เดิม (URL ไม่เปลี่ยน)
+```
+
+ครั้งแรกต้อง `bun x @google/clasp@2.4.2 login` และเปิด **Google Apps Script API** ที่
+<https://script.google.com/home/usersettings>
+
+## ขั้นตอนที่ 1 — สร้าง Google Sheets + Apps Script (ทำเสร็จแล้ว — เก็บไว้เป็นเอกสารอ้างอิง)
 
 1. สร้าง Google Sheets ใหม่ 1 ไฟล์ ตั้งชื่อ เช่น `บันทึกตัดอัดก้อนชีวมวล`
 2. เมนู **Extensions → Apps Script**

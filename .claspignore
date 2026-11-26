@@ -1,0 +1,5 @@
+# ไฟล์ที่ส่งขึ้น Apps Script (clasp push) — เอาเฉพาะ backend
+**/**
+!Code.gs
+!appsscript.json
+!README.md
