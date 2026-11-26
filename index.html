@@ -328,7 +328,10 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
           <div class="field"><label for="f-bales">จำนวนก้อน</label><input id="f-bales" type="number" inputmode="numeric" step="1" min="0" required></div>
           <div class="field"><label for="f-weight">น้ำหนักเฉลี่ยต่อก้อน (กก.)</label><input id="f-weight" type="number" inputmode="decimal" step="0.1" min="0" required></div>
           <div class="field"><label for="f-moist">ค่าความชื้น ณ ตอนเก็บ (%)</label><input id="f-moist" type="number" inputmode="decimal" step="0.1" min="0" max="100"></div>
-          <div class="field"><label for="f-fuel">น้ำมันที่ใช้ (ลิตร)</label><input id="f-fuel" type="number" inputmode="decimal" step="0.1" min="0"></div>
+          <div class="field"><label for="f-fuel">น้ำมันที่ใช้ (ลิตร × 50 บาท)</label><input id="f-fuel" type="number" inputmode="decimal" step="0.1" min="0"></div>
+          <div class="field"><label for="f-daycost">ค่าแรงงาน+เครื่องจักร (บาท/วัน)</label><input id="f-daycost" type="number" inputmode="decimal" step="1" min="0" value="1800"></div>
+          <div class="field"><label for="f-rolls">ม้วนเชือก (ม้วน × 450 บาท)</label><input id="f-rolls" type="number" inputmode="numeric" step="1" min="0" value="0"></div>
+          <div class="field wide"><span class="hint" id="f-cost-hint" aria-live="polite"></span></div>
           <div class="field"><label for="f-collector">ผู้เก็บข้อมูล</label><input id="f-collector" type="text" autocomplete="name" required></div>
           <div class="field wide"><label for="f-parcel">แปลง</label><select id="f-parcel"><option value="">ไม่ระบุแปลง</option><option value="__other">แปลงอื่นนอกแผนที่</option></select><span class="hint" id="f-parcel-hint" aria-live="polite"></span></div>
           <div class="field" id="f-other-plot" hidden><label for="f-plot">ชื่อแปลง</label><input id="f-plot" type="text" placeholder="เช่น แปลง ก-01"></div>
@@ -377,6 +380,10 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
             <div class="field"><label for="p-baskets">จำนวนตะกร้าชีวมวลอัดเม็ดที่ได้</label><input id="p-baskets" type="number" inputmode="numeric" step="1" min="0" required></div>
             <div class="field"><label for="p-meter">เลขมิเตอร์ไฟ ณ สิ้นสุดวัน (หน่วย)</label><input id="p-meter" type="number" inputmode="decimal" step="0.1" min="0" required><span class="hint" id="p-hint" aria-live="polite"></span></div>
             <div class="field"><label for="p-moist">ค่าความชื้น (%)</label><input id="p-moist" type="number" inputmode="decimal" step="0.1" min="0" max="100"></div>
+            <div class="field"><label for="p-foreman">หัวหน้างาน (คน · 550 บาท/วัน)</label><input id="p-foreman" type="number" inputmode="numeric" step="1" min="0" value="0"></div>
+            <div class="field"><label for="p-worker">คนงาน (คน · 350 บาท/วัน)</label><input id="p-worker" type="number" inputmode="numeric" step="1" min="0" value="0"></div>
+            <div class="field"><label for="p-skilled">คนงานชำนาญงาน (คน · 400 บาท/วัน)</label><input id="p-skilled" type="number" inputmode="numeric" step="1" min="0" value="0"></div>
+            <div class="field"><label for="p-ot">ค่าล่วงเวลา (ชม. · 100 บาท/ชม.)</label><input id="p-ot" type="number" inputmode="decimal" step="0.5" min="0" value="0"><span class="hint" id="p-wage-hint" aria-live="polite"></span></div>
             <div class="field"><label for="p-collector">ผู้เก็บข้อมูล</label><input id="p-collector" type="text" autocomplete="name" required></div>
             <div class="field wide">
               <label>ค่าใช้จ่ายอื่น ๆ</label>
@@ -652,7 +659,7 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
   var pendingRec = null;
   function showCheckout(kind, rec) {
     var rows = [];
-    if (kind === "chop") {
+    if (rec.wage || rec.workers || rec.foreman || rec.worker || rec.skilled || rec.otHours) {
       rows.push(["หัวหน้างาน", nf(rec.foreman) + " คน × " + WAGE.foreman, rec.foreman * WAGE.foreman]);
       rows.push(["คนงาน", nf(rec.worker) + " คน × " + WAGE.worker, rec.worker * WAGE.worker]);
       rows.push(["คนงานชำนาญงาน", nf(rec.skilled) + " คน × " + WAGE.skilled, rec.skilled * WAGE.skilled]);
@@ -671,14 +678,14 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
     if (kind === "chop") {
       pairs.push(["ตะกร้าที่สับ", nf(rec.baskets) + " ตะกร้า"]);
       pairs.push(["เลขมิเตอร์ไฟ", nf(rec.meter, 1)]);
-      pairs.push(["คนงานรวม", nf(rec.workers) + " คน"]);
-      pairs.push(["ค่าแรง", nf(rec.wage) + " บาท"]);
     } else {
       pairs.push(["ตะกร้าอัดเม็ด", nf(rec.baskets) + " ตะกร้า"]);
       pairs.push(["เลขมิเตอร์ไฟ", nf(rec.meter, 1)]);
       pairs.push(["ความชื้น", rec.moist != null ? nf(rec.moist, 1) + " %" : "-"]);
       pairs.push(["ผู้เก็บข้อมูล", rec.collector || "-"]);
     }
+    pairs.push(["คนงานรวม", nf(rec.workers) + " คน"]);
+    pairs.push(["ค่าแรง", nf(rec.wage) + " บาท"]);
     pairs.forEach(function (p) {
       meta.appendChild(el("div", null, p[0] + " ", el("strong", { text: p[1] })));
     });
@@ -732,9 +739,11 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
   }
   function resetPelletForm() {
     ["p-baskets", "p-meter", "p-moist", "p-note"].forEach(function (id) { $(id).value = ""; });
+    ["p-foreman", "p-worker", "p-skilled", "p-ot"].forEach(function (id) { $(id).value = "0"; });
     $("p-expense-rows").textContent = "";
     addExpenseRow("p-expense-rows");
     pelletDefaults();
+    pelletWageHint();
   }
   $("checkout-confirm").addEventListener("click", function () {
     if (!pendingRec) return;
@@ -753,6 +762,8 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
       payload = {
         date: rec.date, time: rec.time, baskets: rec.baskets, meter: rec.meter, moist: rec.moist,
         collector: rec.collector, note: rec.note,
+        foreman: rec.foreman, worker: rec.worker, skilled: rec.skilled, otHours: rec.otHours,
+        workers: rec.workers, wage: rec.wage,
         expense: rec.expense, expenseNote: rec.expenseNote, createdAt: Date.now()
       };
     }
@@ -783,11 +794,11 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 
   /* ---------- derived figures ---------- */
   function totals() {
-    var t = { rai: 0, bales: 0, kg: 0, fuel: 0, mw: 0, mb: 0 };
+    var t = { rai: 0, bales: 0, kg: 0, fuel: 0, mw: 0, mb: 0, expense: 0 };
     recs.forEach(function (r) {
       t.rai += r.rai || 0; t.bales += r.bales || 0;
       t.kg += (r.bales || 0) * (r.weight || 0);
-      t.fuel += r.fuel || 0;
+      t.fuel += r.fuel || 0; t.expense += r.expense || 0;
       if (r.moist != null) { t.mw += r.moist * (r.bales || 0); t.mb += r.bales || 0; }
     });
     return t;
@@ -817,6 +828,7 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
       ["ความชื้นเฉลี่ย", t.mb ? nf(t.mw / t.mb, 1) : "-", t.mb ? "%" : ""],
       ["น้ำมันรวม", nf(t.fuel, 1), "ลิตร"],
       ["น้ำมันต่อไร่", t.rai && t.fuel ? nf(t.fuel / t.rai, 2) : "-", t.rai && t.fuel ? "ลิตร/ไร่" : ""],
+      ["ค่าใช้จ่ายรวม", t.expense ? nf(t.expense) : "-", t.expense ? "บาท" : ""],
       ["ก้อนต่อไร่", t.rai ? nf(t.bales / t.rai, 1) : "-", t.rai ? "ก้อน/ไร่" : ""]
     ];
     items.forEach(function (i) {
@@ -842,8 +854,8 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
       wrap.appendChild(el("div", { class: "empty" }, el("strong", { text: "ยังไม่มีบันทึก" }), "กดปุ่ม ＋ เพิ่มข้อมูลใหม่ แล้วกดบันทึกข้อมูล รายการจะแสดงที่นี่"));
       return;
     }
-    var heads = ["วันที่", "เวลา", "แปลง", "ไร่", "ก้อน", "นน.เฉลี่ย/ก้อน (กก.)", "รวม (กก.)", "ความชื้น (%)", "น้ำมัน (ลิตร)", "ผู้เก็บข้อมูล", "หมายเหตุ", ""];
-    var numCols = { 3: 1, 4: 1, 5: 1, 6: 1, 7: 1, 8: 1 };
+    var heads = ["วันที่", "เวลา", "แปลง", "ไร่", "ก้อน", "นน.เฉลี่ย/ก้อน (กก.)", "รวม (กก.)", "ความชื้น (%)", "น้ำมัน (ลิตร)", "ค่าใช้จ่าย (บาท)", "ผู้เก็บข้อมูล", "หมายเหตุ", ""];
+    var numCols = { 3: 1, 4: 1, 5: 1, 6: 1, 7: 1, 8: 1, 9: 1 };
     var thead = el("tr");
     heads.forEach(function (h, i) { thead.appendChild(el("th", { class: numCols[i] ? "num" : "", text: h })); });
     var tbody = el("tbody");
@@ -873,6 +885,7 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
         el("td", { class: "num", text: nf((r.bales || 0) * (r.weight || 0), 1) }),
         el("td", { class: "num", text: r.moist != null ? nf(r.moist, 1) : "-" }),
         el("td", { class: "num", text: r.fuel != null ? nf(r.fuel, 1) : "-" }),
+        el("td", { class: "num", style: "min-width:110px" }, nf(r.expense || 0), r.expenseNote ? el("div", { class: "hint", style: "white-space:normal", text: r.expenseNote }) : null),
         el("td", { text: r.collector || "" }),
         el("td", { text: r.note || "" }),
         del));
@@ -1324,9 +1337,9 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
     });
   }
   $("dl-csv").addEventListener("click", function () {
-    var rows = [["วันที่", "เวลา", "แปลง", "ละติจูด", "ลองจิจูด", "จำนวนไร่", "จำนวนก้อน", "น้ำหนักเฉลี่ยต่อก้อน (กก.)", "น้ำหนักรวม (กก.)", "ค่าความชื้น (%)", "น้ำมันที่ใช้ (ลิตร)", "ผู้เก็บข้อมูล", "เก็บเกี่ยวเสร็จสิ้น", "หมายเหตุ"]];
+    var rows = [["วันที่", "เวลา", "แปลง", "ละติจูด", "ลองจิจูด", "จำนวนไร่", "จำนวนก้อน", "น้ำหนักเฉลี่ยต่อก้อน (กก.)", "น้ำหนักรวม (กก.)", "ค่าความชื้น (%)", "น้ำมันที่ใช้ (ลิตร)", "ค่าแรง+เครื่อง (บาท/วัน)", "ม้วนเชือก", "ค่าใช้จ่ายรวม (บาท)", "รายละเอียดค่าใช้จ่าย", "ผู้เก็บข้อมูล", "เก็บเกี่ยวเสร็จสิ้น", "หมายเหตุ"]];
     sorted().reverse().forEach(function (r) {
-      rows.push([r.date, r.time, r.plot || "", r.lat, r.lng, r.rai, r.bales, r.weight, (r.bales || 0) * (r.weight || 0), r.moist, r.fuel, r.collector, r.done ? "ใช่" : "", r.note || ""]);
+      rows.push([r.date, r.time, r.plot || "", r.lat, r.lng, r.rai, r.bales, r.weight, (r.bales || 0) * (r.weight || 0), r.moist, r.fuel, r.dayCost, r.rolls, r.expense || 0, r.expenseNote || "", r.collector, r.done ? "ใช่" : "", r.note || ""]);
     });
     save("ตัดอัดก้อนชีวมวล-ข้อมูลทั้งหมด.csv", toCsv(rows));
   });
@@ -1349,6 +1362,32 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
   }
   function numOrNull(id) { var v = $(id).value.trim(); return v === "" ? null : Number(v); }
 
+  /* ค่าใช้จ่ายรายวันของงานอัดก้อน: ค่าแรง+เครื่อง/วัน, น้ำมันลิตรละ 50, เชือกม้วนละ 450 */
+  var BALE_COST = { day: 1800, fuel: 50, rope: 450 };
+  function baleCost() {
+    var day = numOrNull("f-daycost"); if (day == null) day = 0;
+    var liters = numOrNull("f-fuel") || 0, rolls = numOrNull("f-rolls") || 0;
+    var fuelCost = liters * BALE_COST.fuel, ropeCost = rolls * BALE_COST.rope;
+    return { day: day, liters: liters, fuelCost: fuelCost, rolls: rolls, ropeCost: ropeCost,
+      total: day + fuelCost + ropeCost };
+  }
+  function baleCostNote() {
+    var c = baleCost(), parts = [];
+    if (c.day) parts.push("ค่าแรง+เครื่อง " + nf(c.day));
+    if (c.liters) parts.push("น้ำมัน " + nf(c.liters, 1) + " ลิตร " + nf(c.fuelCost));
+    if (c.rolls) parts.push("เชือก " + nf(c.rolls) + " ม้วน " + nf(c.ropeCost));
+    return parts.join(", ");
+  }
+  function baleCostHint() {
+    var c = baleCost();
+    $("f-cost-hint").textContent = "ค่าแรง+เครื่อง " + nf(c.day) + " + น้ำมัน " + nf(c.liters, 1) +
+      " ลิตร × " + BALE_COST.fuel + " = " + nf(c.fuelCost) + " + เชือก " + nf(c.rolls) +
+      " ม้วน × " + BALE_COST.rope + " = " + nf(c.ropeCost) + " · รวม " + nf(c.total) + " บาท";
+  }
+  ["f-daycost", "f-fuel", "f-rolls"].forEach(function (id) {
+    $(id).addEventListener("input", baleCostHint);
+  });
+
   $("form").addEventListener("submit", function (e) {
     e.preventDefault();
     var err = $("formerr"); err.textContent = "";
@@ -1368,9 +1407,12 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
     if (coord === false) { err.textContent = "พิกัดไม่ถูกต้อง ใช้รูปแบบ 18.12345, 99.12345"; $("f-coord").focus(); return; }
     if (done && (!plot || !coord)) { err.textContent = "เลือกแปลงก่อนติ๊กเก็บเกี่ยวเสร็จสิ้น (แปลงอื่นนอกแผนที่ต้องกรอกชื่อและพิกัด)"; return; }
     if (coord && !plot) { err.textContent = "ใส่ชื่อแปลงคู่กับพิกัด"; $("f-plot").focus(); return; }
+    var bc = baleCost();
     var doc = {
       date: date, time: time, rai: rai, bales: bales, weight: weight,
-      moist: numOrNull("f-moist"), fuel: numOrNull("f-fuel"),
+      moist: numOrNull("f-moist"), fuel: bc.liters,
+      dayCost: bc.day, fuelCost: bc.fuelCost, rolls: bc.rolls, ropeCost: bc.ropeCost,
+      expense: bc.total, expenseNote: baleCostNote(),
       collector: collector, note: $("f-note").value.trim(),
       plot: plot, parcel: parcelId, lat: coord ? coord.lat : null, lng: coord ? coord.lng : null,
       done: done, createdAt: Date.now()
@@ -1379,8 +1421,10 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
     db.collection(COL).add(doc).then(function () {
       toast("บันทึกข้อมูลแล้ว");
       closeEntry();
-      ["f-rai", "f-bales", "f-weight", "f-moist", "f-fuel", "f-note"].forEach(function (id) { $(id).value = ""; });
+      ["f-rai", "f-bales", "f-weight", "f-moist", "f-fuel", "f-note", "f-rolls"].forEach(function (id) { $(id).value = ""; });
+      $("f-daycost").value = BALE_COST.day;
       $("f-done").checked = false;
+      baleCostHint();
       nowDefaults();
     }, function (x) {
       err.textContent = x && x.code === "quota_exceeded" ? "พื้นที่เก็บข้อมูลเต็ม" : "บันทึกไม่สำเร็จ ลองอีกครั้ง";
@@ -1436,14 +1480,15 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
     rm.addEventListener("click", function () {
       if (document.querySelectorAll("#" + boxId + " .exp-row").length <= 1) { l.value = ""; a.value = ""; }
       else row.remove();
-      chopWageHint();
+      syncHints();
     });
-    [l, a].forEach(function (i) { i.addEventListener("input", chopWageHint); });
+    [l, a].forEach(function (i) { i.addEventListener("input", syncHints); });
     row.appendChild(l); row.appendChild(a); row.appendChild(rm);
     $(boxId).appendChild(row);
   }
   $("expense-add").addEventListener("click", function () { addExpenseRow("expense-rows"); chopWageHint(); });
-  $("p-expense-add").addEventListener("click", function () { addExpenseRow("p-expense-rows"); $("p-expense-hint").textContent = "รวม " + nf(expenseSum(expenseItems("p-expense-rows"))) + " บาท"; });
+  $("p-expense-add").addEventListener("click", function () { addExpenseRow("p-expense-rows"); pelletWageHint(); });
+  function syncHints() { chopWageHint(); pelletWageHint(); }
 
 
   function chopFormWage() {
@@ -1640,6 +1685,22 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
     $("p-date").value = d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
     $("p-time").value = pad(d.getHours()) + ":" + pad(d.getMinutes());
   }
+  function pelletCrew() {
+    var f = numOrNull("p-foreman") || 0, w = numOrNull("p-worker") || 0;
+    var sk = numOrNull("p-skilled") || 0, o = numOrNull("p-ot") || 0;
+    return { foreman: f, worker: w, skilled: sk, otHours: o, workers: f + w + sk,
+      wage: chopWage({ foreman: f, worker: w, skilled: sk, otHours: o }) };
+  }
+  function pelletWageHint() {
+    var c = pelletCrew(), expTotal = expenseSum(expenseItems("p-expense-rows"));
+    $("p-wage-hint").textContent = "รวม " + nf(c.workers) + " คน · ค่าแรง " + nf(c.wage) + " บาท";
+    $("p-expense-hint").textContent = expTotal
+      ? "ค่าใช้จ่าย " + nf(expTotal) + " บาท · รวมค่าแรง+ค่าใช้จ่าย " + nf(c.wage + expTotal) + " บาท"
+      : "";
+  }
+  ["p-foreman", "p-worker", "p-skilled", "p-ot"].forEach(function (id) {
+    $(id).addEventListener("input", pelletWageHint);
+  });
   function pelletSorted() {
     return pellets.slice().sort(function (a, b) {
       var x = stampOf(a), y = stampOf(b);
@@ -1672,9 +1733,10 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 
   function renderPellet() {
     var rows = pelletRows(), box = $("p-stats");
-    var baskets = 0, mw = 0, mb = 0, use = 0, useBaskets = 0, expSum = 0, days = {};
+    var baskets = 0, mw = 0, mb = 0, use = 0, useBaskets = 0, expSum = 0, wageSum = 0, days = {};
     rows.forEach(function (r) {
       baskets += r.baskets || 0; days[r.date] = 1; expSum += r.expense || 0;
+      wageSum += r.wage != null ? r.wage : chopWage(r);
       if (r.moist != null) { mw += r.moist * (r.baskets || 0); mb += r.baskets || 0; }
       if (r.use != null && r.use >= 0) { use += r.use; useBaskets += r.baskets || 0; }
     });
@@ -1683,7 +1745,9 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
       ["ความชื้นเฉลี่ย", mb ? nf(mw / mb, 1) : "-", mb ? "%" : ""],
       ["ไฟฟ้าที่ใช้รวม", rows.length > 1 ? nf(use, 1) : "-", rows.length > 1 ? "หน่วย" : ""],
       ["ไฟต่อตะกร้า", useBaskets ? nf(use / useBaskets, 2) : "-", useBaskets ? "หน่วย/ตะกร้า" : ""],
+      ["ค่าแรงรวม", wageSum ? nf(wageSum) : "-", wageSum ? "บาท" : ""],
       ["ค่าใช้จ่ายรวม", expSum ? nf(expSum) : "-", expSum ? "บาท" : ""],
+      ["รวมค่าแรง+ค่าใช้จ่าย", wageSum + expSum ? nf(wageSum + expSum) : "-", wageSum + expSum ? "บาท" : ""],
       ["จำนวนวัน", nf(Object.keys(days).length), "วัน"]
     ];
     box.textContent = "";
@@ -1701,9 +1765,9 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
       pelletHint();
       return;
     }
-    var heads = ["วันที่", "เวลา", "ตะกร้า", "ความชื้น (%)", "เลขมิเตอร์", "ไฟที่ใช้ (หน่วย)", "ผู้เก็บข้อมูล", "หมายเหตุ", "ค่าใช้จ่าย (บาท)", ""];
+    var heads = ["วันที่", "เวลา", "ตะกร้า", "ความชื้น (%)", "เลขมิเตอร์", "ไฟที่ใช้ (หน่วย)", "ผู้เก็บข้อมูล", "หมายเหตุ", "คนงาน (คน)", "ค่าแรง (บาท)", "ค่าใช้จ่าย (บาท)", ""];
     var thead = el("tr");
-    heads.forEach(function (h, i) { thead.appendChild(el("th", { class: i >= 2 && i <= 5 || i === 8 ? "num" : "", text: h })); });
+    heads.forEach(function (h, i) { thead.appendChild(el("th", { class: i >= 2 && i <= 5 || i === 8 || i === 9 || i === 10 ? "num" : "", text: h })); });
     var tbody = el("tbody");
     rows.reverse().forEach(function (r) {
       var del = el("td");
@@ -1727,6 +1791,8 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
         useCell,
         el("td", { text: r.collector || "" }),
         el("td", { text: r.note || "" }),
+        el("td", { class: "num", text: nf(r.workers || 0) }),
+        el("td", { class: "num", text: nf(r.wage != null ? r.wage : chopWage(r)) }),
         el("td", { class: "num" }, nf(r.expense || 0), r.expenseNote ? el("div", { class: "hint", style: "white-space:normal", text: r.expenseNote }) : null),
         del));
     });
@@ -1735,8 +1801,11 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
   }
 
   $("dl-pellet").addEventListener("click", function () {
-    var rows = [["วันที่", "เวลา", "จำนวนตะกร้าชีวมวลอัดเม็ด", "ค่าความชื้น (%)", "เลขมิเตอร์ไฟ", "ไฟที่ใช้ (หน่วย)", "ผู้เก็บข้อมูล", "หมายเหตุ", "ค่าใช้จ่าย (บาท)", "รายละเอียดค่าใช้จ่าย"]];
-    pelletRows().forEach(function (r) { rows.push([r.date, r.time, r.baskets, r.moist, r.meter, r.use, r.collector, r.note || "", r.expense || 0, r.expenseNote || ""]); });
+    var rows = [["วันที่", "เวลา", "จำนวนตะกร้าชีวมวลอัดเม็ด", "ค่าความชื้น (%)", "เลขมิเตอร์ไฟ", "ไฟที่ใช้ (หน่วย)", "ผู้เก็บข้อมูล", "หมายเหตุ", "หัวหน้างาน", "คนงาน", "คนงานชำนาญงาน", "ชั่วโมงล่วงเวลา", "ค่าแรง (บาท)", "ค่าใช้จ่าย (บาท)", "รายละเอียดค่าใช้จ่าย", "รวม (บาท)"]];
+    pelletRows().forEach(function (r) {
+      var w = r.wage != null ? r.wage : chopWage(r), e = r.expense || 0;
+      rows.push([r.date, r.time, r.baskets, r.moist, r.meter, r.use, r.collector, r.note || "", r.foreman || 0, r.worker || 0, r.skilled || 0, r.otHours || 0, w, e, r.expenseNote || "", w + e]);
+    });
     save("งานอัดเม็ดชีวมวล-ข้อมูลทั้งหมด.csv", toCsv(rows));
   });
 
@@ -1754,9 +1823,12 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
     var st = date + " " + time, prev = prevMeterBefore(st);
     if (prev && meter < prev.rec.meter) { err.textContent = "เลขมิเตอร์น้อยกว่าครั้งก่อน (" + nf(prev.rec.meter, 1) + " · " + meterSource(prev.kind) + " " + fmtDate(prev.rec.date) + ") ตรวจสอบก่อนบันทึก"; $("p-meter").focus(); return; }
     var pItems = expenseItems("p-expense-rows");
+    var crew = pelletCrew();
     showCheckout("pellet", {
       date: date, time: time, baskets: baskets, meter: meter, moist: numOrNull("p-moist"),
       collector: collector, note: $("p-note").value.trim(),
+      foreman: crew.foreman, worker: crew.worker, skilled: crew.skilled, otHours: crew.otHours,
+      workers: crew.workers, wage: crew.wage,
       expense: expenseSum(pItems), expenseNote: expenseText(pItems), items: pItems
     });
   });
@@ -1772,6 +1844,8 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
   chopDefaults();
   pelletDefaults();
   addExpenseRow("p-expense-rows");
+  baleCostHint();
+  pelletWageHint();
   showTab("bale");
   renderAll();
   renderChop();
