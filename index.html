@@ -61,6 +61,11 @@ body {
 h1, h2, h3 { font-family: var(--font-display); font-weight: 600; text-wrap: balance; margin: 0; line-height: 1.25; }
 h1 { font-size: clamp(1.4rem, 4.5vw, 1.9rem); }
 h2 { font-size: 1.15rem; }
+h3 { font-size: 1.02rem; }
+.plant-head { border-top: 2px solid var(--accent); padding-top: 16px; display: flex; flex-direction: column; gap: 2px; }
+.plant-head h2 { font-size: clamp(1.25rem, 3.6vw, 1.55rem); letter-spacing: .01em; }
+.plant-head .sub { margin-top: 4px; }
+.plant-part { border-top: 1px solid var(--line); padding-top: 18px; }
 .eyebrow { font-size: .8rem; letter-spacing: .04em; color: var(--muted); margin: 0 0 6px; }
 .sub { color: var(--muted); margin: 6px 0 0; max-width: 65ch; }
 .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
@@ -223,8 +228,14 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
   </main>
 
   <main id="task2" class="panel">
-    <div id="chop" class="panel">
-      <div class="section-head"><h2>งานสับชีวมวล</h2></div>
+    <div class="plant-head">
+      <p class="eyebrow">โรงงาน</p>
+      <h2>Biomass Pellet plant</h2>
+      <p class="sub">งานสับชีวมวลและงานอัดเม็ดชีวมวล ใช้เลขมิเตอร์ไฟตัวเดียวกัน — กรอกเลขมิเตอร์ทุกครั้งที่บันทึก ระบบจะหักเลขครั้งก่อนให้เป็นหน่วยไฟที่ใช้</p>
+    </div>
+
+    <div id="chop" class="panel plant-part">
+      <div class="section-head"><h3>งานสับชีวมวล</h3></div>
       <p class="note">กรอกเลขมิเตอร์ไฟทุกครั้งที่บันทึก ระบบหักเลขมิเตอร์ครั้งก่อนให้เป็นหน่วยไฟที่ใช้ของวันนั้น — มิเตอร์ตัวเดียวกันกับงานอัดเม็ด จึงหักเลขมิเตอร์ข้ามสองงาน</p>
       <div class="stats" id="c-stats" aria-label="สรุปงานสับ"></div>
 
@@ -238,8 +249,8 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
       </section>
     </div>
 
-    <div id="pellet" class="panel">
-      <div class="section-head"><h2>งานอัดเม็ดชีวมวล</h2></div>
+    <div id="pellet" class="panel plant-part">
+      <div class="section-head"><h3>งานอัดเม็ดชีวมวล</h3></div>
       <p class="note">กรอกเลขมิเตอร์ไฟ ณ สิ้นสุดวันทุกครั้ง ระบบหักเลขมิเตอร์ครั้งก่อนหน้าให้เป็นการใช้ไฟฟ้าของวันนั้น — มิเตอร์ตัวเดียวกันกับงานสับ จึงหักเลขมิเตอร์ข้ามสองงาน</p>
       <div class="stats" id="p-stats" aria-label="สรุปงานอัดเม็ด"></div>
 
@@ -596,7 +607,7 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
     wrap.textContent = "";
     $("dl-csv").hidden = !(dl && recs.length);
     if (!recs.length) {
-      wrap.appendChild(el("div", { class: "empty" }, el("strong", { text: "ยังไม่มีบันทึก" }), "กรอกฟอร์มด้านบนแล้วกดบันทึกข้อมูล รายการจะแสดงที่นี่"));
+      wrap.appendChild(el("div", { class: "empty" }, el("strong", { text: "ยังไม่มีบันทึก" }), "กดปุ่ม ＋ เพิ่มข้อมูลใหม่ แล้วกดบันทึกข้อมูล รายการจะแสดงที่นี่"));
       return;
     }
     var heads = ["วันที่", "เวลา", "แปลง", "ไร่", "ก้อน", "นน.เฉลี่ย/ก้อน (กก.)", "รวม (กก.)", "ความชื้น (%)", "น้ำมัน (ลิตร)", "ผู้เก็บข้อมูล", "หมายเหตุ", ""];
@@ -1246,7 +1257,7 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
     wrap.textContent = "";
     $("dl-chop").hidden = !(dl && rows.length);
     if (!rows.length) {
-      wrap.appendChild(el("div", { class: "empty" }, el("strong", { text: "ยังไม่มีบันทึกงานสับ" }), "กรอกฟอร์มด้านบนแล้วกดบันทึกข้อมูล รายการจะแสดงที่นี่"));
+      wrap.appendChild(el("div", { class: "empty" }, el("strong", { text: "ยังไม่มีบันทึกงานสับ" }), "กดปุ่ม ＋ เพิ่มข้อมูลใหม่ แล้วกดบันทึกข้อมูล รายการจะแสดงที่นี่"));
       chopHint();
       return;
     }
@@ -1375,7 +1386,7 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
     wrap.textContent = "";
     $("dl-pellet").hidden = !(dl && rows.length);
     if (!rows.length) {
-      wrap.appendChild(el("div", { class: "empty" }, el("strong", { text: "ยังไม่มีบันทึกงานอัดเม็ด" }), "กรอกฟอร์มด้านบนแล้วกดบันทึกข้อมูล รายการจะแสดงที่นี่"));
+      wrap.appendChild(el("div", { class: "empty" }, el("strong", { text: "ยังไม่มีบันทึกงานอัดเม็ด" }), "กดปุ่ม ＋ เพิ่มข้อมูลใหม่ แล้วกดบันทึกข้อมูล รายการจะแสดงที่นี่"));
       pelletHint();
       return;
     }
