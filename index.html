@@ -119,9 +119,7 @@ button.danger { color: var(--danger); border-color: var(--danger); background: t
 .mapzoom { position: absolute; top: 14px; right: 14px; display: flex; flex-direction: column; gap: 6px; z-index: 3; }
 .mapzoom button { width: 36px; height: 36px; padding: 0; font-size: 1.15rem; line-height: 1; border-radius: 8px; background: var(--surface); color: var(--fg); border: 1px solid var(--line); box-shadow: 0 1px 3px rgba(0,0,0,.18); }
 .mapzoom button:active { background: var(--surface-2); }
-.modebtns { display: inline-flex; border: 1px solid var(--line); border-radius: 99px; overflow: hidden; }
-.modebtn { border: 0; border-radius: 0; background: var(--surface); padding: 6px 14px; font-size: .9rem; font-weight: 500; }
-.modebtn[aria-pressed="true"] { background: var(--accent); color: var(--accent-fg); }
+
 .mapbox { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 10px; min-width: 0; }
 .mapbox svg { width: 100%; height: auto; display: block; }
 .plotlist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
@@ -217,10 +215,6 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
       <div class="section-head">
         <h2 id="h-map">ความคืบหน้าการเก็บเกี่ยวรายแปลง</h2>
         <div class="actions">
-          <div class="modebtns" id="mapmode" role="group" aria-label="มุมมองแผนที่">
-            <button type="button" class="modebtn" data-mode="progress" aria-pressed="true">ความคืบหน้า</button>
-            <button type="button" class="modebtn" data-mode="google" aria-pressed="false">Google Maps</button>
-          </div>
           <a class="btn" id="open-map" href="#task1" target="_blank" rel="noopener" hidden>เปิด Google My Maps</a>
           <button type="button" id="dl-map" hidden>ดาวน์โหลด CSV สำหรับนำเข้า My Maps</button>
         </div>
@@ -233,7 +227,7 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
           <div class="listscroll"><ul class="plotlist" id="plotlist"></ul></div>
         </div>
       </div>
-      <p class="note">ผังนี้วาดขอบเขตแปลงจากไฟล์ KMZ ทับภาพดาวเทียม (ภาพ Google ที่แคปไว้) ภาพครอบคลุมเฉพาะบางส่วน แปลง P20 และขอบด้านเหนืออยู่นอกภาพ ซูมด้วยปุ่มมุมขวาบน ล้อเมาส์ หรือบีบนิ้ว แล้วลากเพื่อเลื่อนผัง แปลงที่อยู่นอกภาพจะถูกตัดออกจากกรอบเมื่อเปิดภาพดาวเทียม Google My Maps ฝังตรงๆ ไม่ได้ จึงมีปุ่มเปิดในแท็บใหม่ ไฟล์ CSV ที่ดาวน์โหลดนำเข้าเป็นชั้นข้อมูลใน My Maps ได้</p>
+      <p class="note">ผังรวมภาพดาวเทียม Google กับขอบเขตแปลงจากไฟล์ KMZ ไว้ในภาพเดียว โดยระบายสีแปลงตาม % ที่เก็บเกี่ยวแล้ว ซูมด้วยปุ่มมุมขวาบน ล้อเมาส์ หรือบีบนิ้ว แล้วลากเพื่อเลื่อนผัง ทั้งภาพและขอบแปลงขยับพร้อมกัน (ขอบแปลงอาจเหลื่อมจากภาพเล็กน้อยตามความถูกต้องของพิกัด KMZ) หากเปิดภาพดาวเทียมไม่ได้ ระบบจะใช้ภาพ Esri แทน</p>
       <form id="mapform" class="actions" novalidate>
         <div class="field" style="flex:1 1 280px">
           <label for="f-mapurl">ลิงก์ Google My Maps ของโครงการ</label>
@@ -649,22 +643,6 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
   }
   var PARCELS = [], selectedParcel = null;
   var mapView = { k: 1, x: 0, y: 0 };   // สถานะซูม/เลื่อนของแผนที่ (คงอยู่ระหว่างการวาดใหม่)
-  var mapMode = "progress";             // progress = ผัง % จาก KMZ, google = Google Maps ฝัง
-  try { if (localStorage.getItem("mapMode") === "google") mapMode = "google"; } catch (e) {}
-  function syncModeButtons() {
-    document.querySelectorAll("#mapmode .modebtn").forEach(function (b) {
-      b.setAttribute("aria-pressed", b.getAttribute("data-mode") === mapMode ? "true" : "false");
-    });
-  }
-  $("mapmode").addEventListener("click", function (e) {
-    var b = e.target.closest(".modebtn");
-    if (!b) return;
-    mapMode = b.getAttribute("data-mode");
-    try { localStorage.setItem("mapMode", mapMode); } catch (err) {}
-    syncModeButtons();
-    renderMap();
-  });
-  syncModeButtons();
   /* satellite screenshot, georeferenced by its top-left and bottom-right corners */
   var SAT = { src: "sat.jpg", lat0: 18.407567, lng0: 99.908546, lat1: 18.386060, lng1: 99.945773 };
   var showSat = true;
@@ -723,35 +701,6 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
   function statusOf(st) { return st && st.done ? "done" : st ? "prog" : "none"; }
   function selectParcel(id) { selectedParcel = selectedParcel === id ? null : id; renderMap(); }
 
-  /* ---------- Google Maps (ฝัง iframe ไม่ต้องใช้ API key) ---------- */
-  function parcelsCenter() {
-    var lat = 0, lng = 0, n = 0;
-    PARCELS.forEach(function (p) { p.ring.forEach(function (q) { lng += q[0]; lat += q[1]; n++; }); });
-    if (!n) return { lat: 18.4019, lng: 99.9294 };
-    return { lat: lat / n, lng: lng / n };
-  }
-  function googleMapSrc() {
-    var m = /[?&]mid=([A-Za-z0-9_-]+)/.exec(mapUrl || "");
-    if (m) return "https://www.google.com/maps/d/embed?mid=" + m[1] + "&hl=th";
-    var c = parcelsCenter();
-    return "https://maps.google.com/maps?q=" + c.lat.toFixed(5) + "," + c.lng.toFixed(5) + "&t=k&z=15&hl=th&output=embed";
-  }
-  function buildGoogleFrame() {
-    var wrap = el("div", { class: "gmap" });
-    var f = document.createElement("iframe");
-    f.src = googleMapSrc();
-    f.title = "Google Maps";
-    f.loading = "lazy";
-    f.setAttribute("referrerpolicy", "no-referrer-when-downgrade");
-    f.style.cssText = "width:100%;aspect-ratio:16/10;border:0;border-radius:4px;display:block";
-    wrap.appendChild(f);
-    wrap.appendChild(el("p", { class: "hint", style: "margin:8px 0 0" },
-      /[?&]mid=/.test(mapUrl || "")
-        ? "แสดงแผนที่ Google My Maps ของโครงการ (ต้องแชร์เป็น 'ทุกคนที่มีลิงก์') — ขอบแปลงอยู่ใน My Maps"
-        : "Google Maps ภาพดาวเทียมของพื้นที่ — ถ้าต้องการเห็นขอบเขตแปลงบน Google Maps ให้วางลิงก์ My Maps ด้านล่าง"));
-    return wrap;
-  }
-
   /* ความคืบหน้าของแปลง = ไร่ที่บันทึกแล้ว / ไร่ตามแผนที่ (KMZ) */
   function parcelPct(p, st) {
     if (!p) return null;
@@ -785,54 +734,64 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
       ? "ความคืบหน้ารวม " + nf(overall, 0) + "% · เสร็จสิ้น " + doneN + " จาก " + PARCELS.length + " แปลง · " + raiTxt(doneRai) + " จาก " + raiTxt(totRai) + " ไร่ตามแผนที่"
       : "";
 
-    if (mapMode === "google") {
-      box.appendChild(buildGoogleFrame());
-    } else if (!PARCELS.length) {
+    if (!PARCELS.length) {
       box.appendChild(el("div", { class: "empty" }, el("strong", { text: "ไม่พบข้อมูลขอบเขตแปลง" }), "ข้อมูลจากไฟล์ KMZ โหลดไม่สำเร็จ"));
     } else {
-      var W = 720, P = 22;
-      var midLat = 0, n = 0;
-      PARCELS.forEach(function (p) { p.ring.forEach(function (q) { midLat += q[1]; n++; }); });
-      midLat /= n;
-      var kx = Math.cos(midLat * Math.PI / 180);
-      var minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-      function grow(lng, lat) {
-        var x = lng * kx, y = -lat;
-        if (x < minX) minX = x; if (x > maxX) maxX = x;
-        if (y < minY) minY = y; if (y > maxY) maxY = y;
+      /* ---------- พิกัดแบบ Web Mercator เพื่อวางภาพดาวเทียม (tile) ให้ตรงกับขอบแปลง ---------- */
+      var TILE = 256, PAD = 20, TARGET = 820;
+      function lon2x(lng, z) { return (lng + 180) / 360 * TILE * Math.pow(2, z); }
+      function lat2y(lat, z) {
+        var s = Math.sin(lat * Math.PI / 180);
+        return (0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI)) * TILE * Math.pow(2, z);
       }
-      /* ขอบเขตผังคิดจากแปลงที่อยู่ในภาพดาวเทียม เพื่อไม่ให้แปลงที่อยู่นอกภาพ (เช่น P20)
-         ดึงขอบเขตจนเกิดแถบว่างขนาดใหญ่ */
-      var inView = PARCELS.filter(function (p) {
-        if (!showSat) return true;
-        var lo = 1e9, hi = -1e9, za = 1e9, zb = -1e9;
+      var minLng = Infinity, maxLng = -Infinity, minLat = Infinity, maxLat = -Infinity;
+      PARCELS.forEach(function (p) {
         p.ring.forEach(function (q) {
-          if (q[0] < lo) lo = q[0]; if (q[0] > hi) hi = q[0];
-          if (q[1] < za) za = q[1]; if (q[1] > zb) zb = q[1];
+          if (q[0] < minLng) minLng = q[0]; if (q[0] > maxLng) maxLng = q[0];
+          if (q[1] < minLat) minLat = q[1]; if (q[1] > maxLat) maxLat = q[1];
         });
-        return hi >= SAT.lng0 && lo <= SAT.lng1 && zb >= SAT.lat1 && za <= SAT.lat0;
       });
-      if (!inView.length) inView = PARCELS;
-      inView.forEach(function (p) { p.ring.forEach(function (q) { grow(q[0], q[1]); }); });
+      /* เลือกระดับ tile ให้ขอบเขตแปลงกว้างประมาณ TARGET px */
+      var spanLng = Math.max(1e-6, maxLng - minLng);
+      var z = Math.max(10, Math.min(19, Math.round(Math.log2(TARGET * 360 / (TILE * spanLng)))));
+      var x0 = lon2x(minLng, z) - PAD, y0 = lat2y(maxLat, z) - PAD;
+      var W = Math.round(lon2x(maxLng, z) + PAD - x0);
+      var H = Math.round(lat2y(minLat, z) + PAD - y0);
+      var mPerPx = 156543.03392 * Math.cos(((minLat + maxLat) / 2) * Math.PI / 180) / Math.pow(2, z);
+      function px(lng) { return lon2x(lng, z) - x0; }
+      function py(lat) { return lat2y(lat, z) - y0; }
       var moved = false, drag = null;
-      var sc = (W - 2 * P) / (maxX - minX);
-      /* ใช้สัดส่วนตามพิกัดจริง ไม่บังคับความสูงขั้นต่ำ (เดิมเติมแถบว่างด้านล่างทำให้ผังดูไม่สมส่วน) */
-      var H = Math.round((maxY - minY) * sc + 2 * P);
-      function px(lng) { return P + (lng * kx - minX) * sc; }
-      function py(lat) { return P + (-lat - minY) * sc; }
 
       var svg = s("svg", { viewBox: "0 0 " + W + " " + H, role: "group", "aria-label": "ผังขอบเขตแปลงจากไฟล์ KMZ (ซูมและเลื่อนได้)" });
       var vg = s("g", {});
       svg.appendChild(vg);
       vg.appendChild(s("rect", { x: 0, y: 0, width: W, height: H, rx: 4, fill: "var(--surface-2)" }));
       if (showSat) {
-        var im = s("image", {
-          x: px(SAT.lng0), y: py(SAT.lat0),
-          width: px(SAT.lng1) - px(SAT.lng0), height: py(SAT.lat1) - py(SAT.lat0),
-          preserveAspectRatio: "none"
-        });
-        im.setAttribute("href", SAT.src);
-        vg.appendChild(im);
+        /* ภาพดาวเทียม Google ต่อจาก tile — ถ้าโหลด tile ไม่ได้จะสลับไป Esri อัตโนมัติ */
+        var maxTX = Math.floor((x0 + W) / TILE), maxTY = Math.floor((y0 + H) / TILE);
+        for (var ty = Math.floor(y0 / TILE); ty <= maxTY; ty++) {
+          for (var tx = Math.floor(x0 / TILE); tx <= maxTX; tx++) {
+            var tile = s("image", {
+              x: tx * TILE - x0, y: ty * TILE - y0, width: TILE, height: TILE,
+              preserveAspectRatio: "none", "pointer-events": "none"
+            });
+            tile.setAttribute("href", "https://mt1.google.com/vt/lyrs=s&x=" + tx + "&y=" + ty + "&z=" + z);
+            tile.setAttribute("referrerpolicy", "no-referrer");
+            tile.setAttribute("data-tx", tx);
+            tile.setAttribute("data-ty", ty);
+            tile.addEventListener("error", function () {
+              if (this.getAttribute("data-fb")) return;
+              this.setAttribute("data-fb", "1");
+              this.setAttribute("href", "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/" + z + "/" + this.getAttribute("data-ty") + "/" + this.getAttribute("data-tx"));
+            });
+            vg.appendChild(tile);
+          }
+        }
+        vg.appendChild(s("text", {
+          x: W - 8, y: H - 8, "text-anchor": "end", "font-size": 10,
+          fill: "rgba(255,255,255,.9)", stroke: "rgba(0,0,0,.55)", "stroke-width": 2.5, "paint-order": "stroke",
+          "pointer-events": "none", "font-family": "Sarabun, sans-serif"
+        }, "ภาพดาวเทียม © Google"));
       } else {
         for (var g = 1; g < 6; g++) vg.appendChild(s("line", { x1: g * W / 6, y1: 0, x2: g * W / 6, y2: H, stroke: "var(--line)", "stroke-width": 1 }));
         for (var h = 1; h < 6; h++) vg.appendChild(s("line", { x1: 0, y1: h * H / 6, x2: W, y2: h * H / 6, stroke: "var(--line)", "stroke-width": 1 }));
@@ -869,7 +828,7 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
           "stroke-width": 3, "paint-order": "stroke", "pointer-events": "none", "font-family": "Sarabun, sans-serif"
         }, nf(pct, 0) + "%"));
       });
-      var bar = 500 / 111320 * sc, bw = Math.max(bar + 24, 72);
+      var bar = 500 / mPerPx, bw = Math.max(bar + 24, 72);
       svg.appendChild(s("rect", { x: 8, y: H - 46, width: bw, height: 38, rx: 4, fill: "var(--surface-2)", "fill-opacity": 0.88 }));
       svg.appendChild(s("line", { x1: 16, y1: H - 18, x2: 16 + bar, y2: H - 18, stroke: "var(--fg)", "stroke-width": 2 }));
       svg.appendChild(s("line", { x1: 16, y1: H - 23, x2: 16, y2: H - 13, stroke: "var(--fg)", "stroke-width": 2 }));
