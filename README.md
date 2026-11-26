@@ -1,5 +1,8 @@
 # บันทึกตัดอัดก้อนชีวมวล
 
+เว็บที่ใช้งานจริง: **<https://paskornc.github.io/>** (repo: <https://github.com/paskornc/paskornc.github.io>)
+แก้ไฟล์แล้ว `git push` ได้เลย GitHub Pages จะอัปเดตให้เอง
+
 เว็บแอปหน้าเดียวสำหรับบันทึกงานภาคสนามของโครงการชีวมวล
 บ้านหาดประชาสามัคคี หมู่ 8 ต.จางเหนือ อ.แม่เมาะ จ.ลำปาง
 ข้อมูลเก็บใน **Google Sheets** ผ่าน Apps Script Web App
