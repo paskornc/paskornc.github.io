@@ -69,6 +69,11 @@ h3 { font-size: 1.02rem; }
 .eyebrow { font-size: .8rem; letter-spacing: .04em; color: var(--muted); margin: 0 0 6px; }
 .sub { color: var(--muted); margin: 6px 0 0; max-width: 65ch; }
 .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.tabs button {
+  padding: 10px 16px; font-weight: 500; color: var(--muted); background: none;
+  border: 0; border-bottom: 3px solid transparent; border-radius: 0; margin-bottom: -1px;
+}
+.tabs button[aria-current="page"] { color: var(--fg); border-bottom-color: var(--accent); }
 .tabs a {
   padding: 10px 16px; text-decoration: none; color: var(--muted); font-weight: 500;
   border-bottom: 3px solid transparent; margin-bottom: -1px;
@@ -169,6 +174,8 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 .segbtn[aria-pressed="true"] { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
 #entry { border: 1px solid var(--line); border-radius: 10px; padding: 0; width: min(680px, calc(100% - 24px)); max-height: 90vh; overflow: auto; background: var(--bg); color: var(--fg); }
 #entry::backdrop { background: rgba(0,0,0,.55); }
+#entry[open] { display: block; }
+#entry.fallback { position: fixed; inset: 0; margin: 0; width: 100%; max-width: none; max-height: none; height: 100%; border: 0; border-radius: 0; z-index: 40; }
 .dlg-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 16px 18px 10px; position: sticky; top: 0; background: var(--bg); border-bottom: 1px solid var(--line); }
 #entry .seg { padding: 12px 18px 0; position: sticky; top: 57px; background: var(--bg); z-index: 1; padding-bottom: 12px; }
 #entry form { padding: 0 18px 18px; }
@@ -180,6 +187,11 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
     <h1>ระบบบันทึกข้อมูลโครงการพัฒนานวัตกรรมการบริหารจัดการชีวมวลจากวัสดุเหลือใช้ทางการเกษตร จังหวัดลำปาง</h1>
     <p class="sub">พื้นที่บ้านหาดประชาสามัคคี หมู่ 8 ตำบลจางเหนือ อำเภอแม่เมาะ จังหวัดลำปาง</p>
   </header>
+
+  <nav class="tabs" aria-label="หมวดงาน">
+    <button type="button" id="tab-bale" aria-current="page">งานอัดก้อน</button>
+    <button type="button" id="tab-plant" aria-current="false">งาน Biomass</button>
+  </nav>
 
   <div id="banner" class="banner" hidden></div>
   <div class="actions" id="syncbar">
@@ -533,6 +545,19 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
     $("f-time").value = pad(d.getHours()) + ":" + pad(d.getMinutes());
   }
 
+  /* ---------- แท็บหมวดงาน: งานอัดก้อน / งาน Biomass ---------- */
+  var tabBale = $("tab-bale"), tabPlant = $("tab-plant"), activeTab = "bale";
+  function showTab(which) {
+    activeTab = which === "plant" ? "plant" : "bale";
+    $("task1").hidden = activeTab !== "bale";
+    $("task2").hidden = activeTab !== "plant";
+    tabBale.setAttribute("aria-current", activeTab === "bale" ? "page" : "false");
+    tabPlant.setAttribute("aria-current", activeTab === "plant" ? "page" : "false");
+    window.scrollTo(0, 0);
+  }
+  tabBale.addEventListener("click", function () { showTab("bale"); });
+  tabPlant.addEventListener("click", function () { showTab("plant"); });
+
   /* ---------- dialog: เพิ่มบันทึกใหม่ ---------- */
   var entryDlg = $("entry");
   function setEntry(kind) {
@@ -543,11 +568,33 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
       p.hidden = p.getAttribute("data-entry-panel") !== kind;
     });
   }
-  $("new-entry").addEventListener("click", function () { setEntry("bale"); entryDlg.showModal(); });
+  /* เปิด/ปิดเองโดยไม่พึ่ง <dialog> ของเบราว์เซอร์ (LINE / WebView เก่าไม่รองรับ showModal) */
+  var hasModal = typeof entryDlg.showModal === "function";
+  function openEntry() {
+    if (hasModal) { try { entryDlg.showModal(); } catch (e) { fallbackOpen(); } }
+    else fallbackOpen();
+    document.documentElement.style.overflow = "hidden";
+  }
+  function fallbackOpen() {
+    entryDlg.setAttribute("open", "");
+    entryDlg.classList.add("fallback");
+  }
+  function closeEntry() {
+    if (hasModal && entryDlg.open) { try { entryDlg.close(); } catch (e) {} }
+    entryDlg.removeAttribute("open");
+    entryDlg.classList.remove("fallback");
+    document.documentElement.style.overflow = "";
+  }
+  $("new-entry").addEventListener("click", function () { setEntry(activeTab === "plant" ? "chop" : "bale"); openEntry(); });
+  entryDlg.addEventListener("click", function (e) {
+    if (e.target !== entryDlg || entryDlg.classList.contains("fallback")) return;
+    var r = entryDlg.getBoundingClientRect();
+    if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) closeEntry();
+  });
   Array.prototype.forEach.call(document.querySelectorAll("#entry [data-entry]"), function (b) {
     b.addEventListener("click", function () { setEntry(b.getAttribute("data-entry")); });
   });
-  $("entry-close").addEventListener("click", function () { entryDlg.close(); });
+  $("entry-close").addEventListener("click", function () { closeEntry(); });
 
   /* ---------- derived figures ---------- */
   function totals() {
@@ -1146,7 +1193,7 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
     var btn = $("submit"); btn.disabled = true;
     db.collection(COL).add(doc).then(function () {
       toast("บันทึกข้อมูลแล้ว");
-      if (entryDlg.open) entryDlg.close();
+      closeEntry();
       ["f-rai", "f-bales", "f-weight", "f-moist", "f-fuel", "f-note"].forEach(function (id) { $(id).value = ""; });
       $("f-done").checked = false;
       nowDefaults();
@@ -1313,7 +1360,7 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
     var btn = $("c-submit"); btn.disabled = true;
     db.collection(CHOP).add({ date: date, time: time, baskets: baskets, moist: numOrNull("c-moist"), meter: meter, workers: workers, createdAt: Date.now() }).then(function () {
       toast("บันทึกข้อมูลแล้ว");
-      if (entryDlg.open) entryDlg.close();
+      closeEntry();
       ["c-baskets", "c-moist", "c-meter"].forEach(function (id) { $(id).value = ""; });
       chopDefaults();
     }, function (x) {
@@ -1444,7 +1491,7 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
     var btn = $("p-submit"); btn.disabled = true;
     db.collection(PELLET).add({ date: date, time: time, baskets: baskets, meter: meter, moist: numOrNull("p-moist"), collector: collector, note: $("p-note").value.trim(), createdAt: Date.now() }).then(function () {
       toast("บันทึกข้อมูลแล้ว");
-      if (entryDlg.open) entryDlg.close();
+      closeEntry();
       ["p-baskets", "p-meter", "p-moist", "p-note"].forEach(function (id) { $(id).value = ""; });
       pelletDefaults();
     }, function (x) {
@@ -1462,6 +1509,7 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
   nowDefaults();
   chopDefaults();
   pelletDefaults();
+  showTab("bale");
   renderAll();
   renderChop();
   renderPellet();
