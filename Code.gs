@@ -47,7 +47,12 @@ var CHOP_COLS = [
   ['ตะกร้าที่สับ', 'baskets', 'num'],
   ['ความชื้น (%)', 'moist', 'num'],
   ['เลขมิเตอร์ไฟ', 'meter', 'num'],
-  ['จำนวนคนงาน', 'workers', 'num'],
+  ['หัวหน้างาน (คน)', 'foreman', 'num'],
+  ['คนงาน (คน)', 'worker', 'num'],
+  ['คนงานชำนาญงาน (คน)', 'skilled', 'num'],
+  ['ค่าล่วงเวลา (ชม.)', 'otHours', 'num'],
+  ['จำนวนคนงานรวม', 'workers', 'num'],
+  ['ค่าแรง (บาท)', 'wage', 'num'],
   ['สร้างเมื่อ', 'createdAt', 'num'],
   ['id', 'id', 'text']
 ];
@@ -83,14 +88,25 @@ function ensureSheet_(name, cols) {
   var ss = ss_();
   if (ss.getSpreadsheetTimeZone() !== 'Asia/Bangkok') ss.setSpreadsheetTimeZone('Asia/Bangkok');
   var sh = ss.getSheetByName(name);
+  var labels = cols.map(function (c) { return c[0]; });
   if (!sh) {
     sh = ss_().insertSheet(name);
-    var labels = cols.map(function (c) { return c[0]; });
     sh.getRange(1, 1, 1, labels.length).setValues([labels]).setFontWeight('bold');
     sh.setFrozenRows(1);
     cols.forEach(function (c, i) {
       if (c[2] === 'text') sh.getRange(1, i + 1, sh.getMaxRows(), 1).setNumberFormat('@');
     });
+  } else {
+    /* โค้ดใหม่อาจเพิ่มคอลัมน์ — อัปเดตหัวตารางให้ตรง (แก้เฉพาะแถวหัว) */
+    var width = Math.max(sh.getLastColumn(), labels.length, 1);
+    var have = sh.getRange(1, 1, 1, width).getValues()[0].map(function (h) { return String(h).trim(); });
+    var same = labels.every(function (l, i) { return have[i] === l; });
+    if (!same) {
+      sh.getRange(1, 1, 1, labels.length).setValues([labels]).setFontWeight('bold');
+      cols.forEach(function (c, i) {
+        if (c[2] === 'text') sh.getRange(2, i + 1, Math.max(sh.getMaxRows() - 1, 1), 1).setNumberFormat('@');
+      });
+    }
   }
   return sh;
 }
