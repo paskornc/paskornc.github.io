@@ -80,7 +80,9 @@ function ss_() {
 }
 
 function ensureSheet_(name, cols) {
-  var sh = ss_().getSheetByName(name);
+  var ss = ss_();
+  if (ss.getSpreadsheetTimeZone() !== 'Asia/Bangkok') ss.setSpreadsheetTimeZone('Asia/Bangkok');
+  var sh = ss.getSheetByName(name);
   if (!sh) {
     sh = ss_().insertSheet(name);
     var labels = cols.map(function (c) { return c[0]; });
@@ -113,7 +115,9 @@ function normCell_(key, type, v) {
     var tz = ss_().getSpreadsheetTimeZone();
     return Utilities.formatDate(v, tz, key === 'time' ? 'HH:mm' : 'yyyy-MM-dd');
   }
-  return (v === null || v === undefined) ? '' : String(v);
+  var s = (v === null || v === undefined) ? '' : String(v);
+  if (s.charAt(0) === "'") s = s.slice(1);
+  return s;
 }
 
 function readRows_(name, cols) {
@@ -150,9 +154,16 @@ function appendRow_(name, cols, rec) {
       var i = map[c[1]];
       if (c[2] === 'num') row[i] = (v === null || v === undefined || v === '') ? '' : Number(v);
       else if (c[2] === 'bool') row[i] = !!v;
+      else if (c[1] === 'date' || c[1] === 'time') row[i] = (v === null || v === undefined || v === '') ? '' : "'" + String(v);
       else row[i] = (v === null || v === undefined) ? '' : String(v);
     });
-    sh.appendRow(row);
+    /* ใช้ setValues (RAW) ไม่ใช่ appendRow เพราะ appendRow จะแปลง "2026-11-26"/"15:00"
+       เป็นค่าวันที่/เวลา แล้วเลื่อนตามเขตเวลาของชีต */
+    var r = sh.getLastRow() + 1;
+    cols.forEach(function (c) {
+      if (c[2] === 'text') sh.getRange(r, map[c[1]] + 1).setNumberFormat('@');
+    });
+    sh.getRange(r, 1, 1, width).setValues([row]);
     return id;
   } finally {
     lock.releaseLock();
@@ -223,6 +234,7 @@ function setSetting_(key, value) {
 
 /** สร้างชีตทั้งหมดและหัวคอลัมน์ (รันมือหนึ่งครั้งหลังวางโค้ด) */
 function setup() {
+  ss_().setSpreadsheetTimeZone('Asia/Bangkok');
   ensureSheet_(BALE_SHEET, BALE_COLS);
   ensureSheet_(CHOP_SHEET, CHOP_COLS);
   ensureSheet_(PELLET_SHEET, PELLET_COLS);

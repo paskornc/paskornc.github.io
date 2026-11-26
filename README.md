@@ -28,9 +28,15 @@ URL นี้ถูกใส่ไว้ใน `index.html` แล้วที�
 ### แก้ backend แล้วอัปเดต
 
 ```bash
-bun x @google/clasp@2.4.2 push --force   # ส่ง Code.gs / appsscript.json ขึ้น Apps Script
-bun x @google/clasp@2.4.2 redeploy       # อัปเดต deployment เดิม (URL ไม่เปลี่ยน)
+# 1) ส่งไฟล์ขึ้น Apps Script
+bun x @google/clasp@2.4.2 push --force
+
+# 2) สร้าง version ใหม่ แล้วอัปเดต deployment เดิม (URL ไม่เปลี่ยน)
+bun x @google/clasp@2.4.2 version "v4 ..."
+bun x @google/clasp@2.4.2 deploy -V 4 -d "v4 ..." -i AKfycbyESQnbxczJ72sap7E5wStL31v7rkHWpFyomEd3Zc_d3OcBSXXJBA2hbNeBgqoamEtv
 ```
+
+ถ้าลืมรหัส deployment ดูได้ด้วย `bun x @google/clasp@2.4.2 deployments`
 
 ครั้งแรกต้อง `bun x @google/clasp@2.4.2 login` และเปิด **Google Apps Script API** ที่
 <https://script.google.com/home/usersettings>
