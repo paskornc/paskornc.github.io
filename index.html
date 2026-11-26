@@ -105,8 +105,23 @@ button.small { padding: 5px 10px; font-size: .82rem; font-weight: 500; }
 button.danger { color: var(--danger); border-color: var(--danger); background: transparent; }
 .err { color: var(--danger); font-size: .9rem; min-height: 1.3em; }
 .banner { border: 1px solid var(--straw); border-radius: 6px; padding: 10px 14px; background: var(--surface); }
-.mapgrid { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 16px; }
+.mapgrid { display: grid; grid-template-columns: minmax(0, 2.1fr) minmax(250px, 1fr); gap: 16px; align-items: start; }
 @media (max-width: 760px) { .mapgrid { grid-template-columns: minmax(0, 1fr); } }
+/* ย้ายแผนที่ขึ้นไปบนกล่องสรุป โดยไม่ต้องย้ายบล็อกใน HTML */
+#task1 > .section[aria-labelledby="h-map"] { order: 1; }
+#task1 > .stats { order: 2; }
+#task1 > .section[aria-labelledby="h-form"] { order: 3; }
+#task1 > .section[aria-labelledby="h-table"] { order: 4; }
+.pbar { height: 6px; border-radius: 99px; background: var(--line); overflow: hidden; margin: -2px 6px 9px; }
+.pbar > i { display: block; height: 100%; border-radius: 99px; }
+.pinfo .pbar { margin: 6px 0 2px; }
+.mapbox { position: relative; }
+.mapzoom { position: absolute; top: 14px; right: 14px; display: flex; flex-direction: column; gap: 6px; z-index: 3; }
+.mapzoom button { width: 36px; height: 36px; padding: 0; font-size: 1.15rem; line-height: 1; border-radius: 8px; background: var(--surface); color: var(--fg); border: 1px solid var(--line); box-shadow: 0 1px 3px rgba(0,0,0,.18); }
+.mapzoom button:active { background: var(--surface-2); }
+.modebtns { display: inline-flex; border: 1px solid var(--line); border-radius: 99px; overflow: hidden; }
+.modebtn { border: 0; border-radius: 0; background: var(--surface); padding: 6px 14px; font-size: .9rem; font-weight: 500; }
+.modebtn[aria-pressed="true"] { background: var(--accent); color: var(--accent-fg); }
 .mapbox { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 10px; min-width: 0; }
 .mapbox svg { width: 100%; height: auto; display: block; }
 .plotlist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
@@ -154,8 +169,8 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 
 <div class="wrap">
   <header>
-    <p class="eyebrow">โครงการพัฒนานวัตกรรมการบริหารจัดการชีวมวลจากวัสดุเหลือใช้ทางการเกษตร จังหวัดลำปาง</p>
-    <h1>บันทึกข้อมูลการตัดอัดก้อนชีวมวล</h1>
+    <p class="eyebrow">งานที่ 1 ตัดอัดก้อนชีวมวล · งานที่ 2 โรงอัดเม็ดชีวมวล</p>
+    <h1>ระบบบันทึกข้อมูลโครงการพัฒนานวัตกรรมการบริหารจัดการชีวมวลจากวัสดุเหลือใช้ทางการเกษตร จังหวัดลำปาง</h1>
     <p class="sub">พื้นที่บ้านหาดประชาสามัคคี หมู่ 8 ตำบลจางเหนือ อำเภอแม่เมาะ จังหวัดลำปาง</p>
   </header>
 
@@ -189,7 +204,7 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
           <div class="field" id="f-other-plot" hidden><label for="f-plot">ชื่อแปลง</label><input id="f-plot" type="text" placeholder="เช่น แปลง ก-01"></div>
           <div class="field" id="f-other-coord" hidden><label for="f-coord">พิกัดแปลง (ละติจูด, ลองจิจูด)</label><input id="f-coord" type="text" inputmode="decimal" placeholder="18.xxxxx, 99.xxxxx"><span class="hint">คัดลอกจาก Google Maps แล้ววางได้เลย</span></div>
           <div class="field wide"><label for="f-note">หมายเหตุ</label><textarea id="f-note"></textarea></div>
-          <div class="field wide check"><input id="f-done" type="checkbox"><div><label for="f-done">เก็บเกี่ยวเสร็จสิ้นทั้งแปลง</label><div class="hint">แปลงที่ติ๊กจะระบายสีเขียวในแผนที่ ต้องเลือกแปลงก่อน</div></div></div>
+          <div class="field wide check"><input id="f-done" type="checkbox"><div><label for="f-done">เก็บเกี่ยวเสร็จสิ้นทั้งแปลง</label><div class="hint">แปลงที่ติ๊กจะนับเป็นเสร็จ 100% ในแผนที่ ต้องเลือกแปลงก่อน</div></div></div>
         </div>
         <div class="actions" style="margin-top:16px">
           <button type="submit" class="primary" id="submit">บันทึกข้อมูล</button>
@@ -200,8 +215,12 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 
     <section class="section" aria-labelledby="h-map">
       <div class="section-head">
-        <h2 id="h-map">พื้นที่ที่เก็บเกี่ยวเสร็จสิ้น</h2>
+        <h2 id="h-map">ความคืบหน้าการเก็บเกี่ยวรายแปลง</h2>
         <div class="actions">
+          <div class="modebtns" id="mapmode" role="group" aria-label="มุมมองแผนที่">
+            <button type="button" class="modebtn" data-mode="progress" aria-pressed="true">ความคืบหน้า</button>
+            <button type="button" class="modebtn" data-mode="google" aria-pressed="false">Google Maps</button>
+          </div>
           <a class="btn" id="open-map" href="#task1" target="_blank" rel="noopener" hidden>เปิด Google My Maps</a>
           <button type="button" id="dl-map" hidden>ดาวน์โหลด CSV สำหรับนำเข้า My Maps</button>
         </div>
@@ -214,7 +233,7 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
           <div class="listscroll"><ul class="plotlist" id="plotlist"></ul></div>
         </div>
       </div>
-      <p class="note">ผังนี้วาดขอบเขตแปลงจากไฟล์ KMZ ทับภาพดาวเทียม (ภาพ Google ที่แคปไว้) ภาพครอบคลุมเฉพาะบางส่วน แปลง P20 และขอบด้านเหนืออยู่นอกภาพ Google My Maps ฝังตรงๆ ไม่ได้ จึงมีปุ่มเปิดในแท็บใหม่ ไฟล์ CSV ที่ดาวน์โหลดนำเข้าเป็นชั้นข้อมูลใน My Maps ได้</p>
+      <p class="note">ผังนี้วาดขอบเขตแปลงจากไฟล์ KMZ ทับภาพดาวเทียม (ภาพ Google ที่แคปไว้) ภาพครอบคลุมเฉพาะบางส่วน แปลง P20 และขอบด้านเหนืออยู่นอกภาพ ซูมด้วยปุ่มมุมขวาบน ล้อเมาส์ หรือบีบนิ้ว แล้วลากเพื่อเลื่อนผัง แปลงที่อยู่นอกภาพจะถูกตัดออกจากกรอบเมื่อเปิดภาพดาวเทียม Google My Maps ฝังตรงๆ ไม่ได้ จึงมีปุ่มเปิดในแท็บใหม่ ไฟล์ CSV ที่ดาวน์โหลดนำเข้าเป็นชั้นข้อมูลใน My Maps ได้</p>
       <form id="mapform" class="actions" novalidate>
         <div class="field" style="flex:1 1 280px">
           <label for="f-mapurl">ลิงก์ Google My Maps ของโครงการ</label>
@@ -629,6 +648,23 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
     return n;
   }
   var PARCELS = [], selectedParcel = null;
+  var mapView = { k: 1, x: 0, y: 0 };   // สถานะซูม/เลื่อนของแผนที่ (คงอยู่ระหว่างการวาดใหม่)
+  var mapMode = "progress";             // progress = ผัง % จาก KMZ, google = Google Maps ฝัง
+  try { if (localStorage.getItem("mapMode") === "google") mapMode = "google"; } catch (e) {}
+  function syncModeButtons() {
+    document.querySelectorAll("#mapmode .modebtn").forEach(function (b) {
+      b.setAttribute("aria-pressed", b.getAttribute("data-mode") === mapMode ? "true" : "false");
+    });
+  }
+  $("mapmode").addEventListener("click", function (e) {
+    var b = e.target.closest(".modebtn");
+    if (!b) return;
+    mapMode = b.getAttribute("data-mode");
+    try { localStorage.setItem("mapMode", mapMode); } catch (err) {}
+    syncModeButtons();
+    renderMap();
+  });
+  syncModeButtons();
   /* satellite screenshot, georeferenced by its top-left and bottom-right corners */
   var SAT = { src: "sat.jpg", lat0: 18.407567, lng0: 99.908546, lat1: 18.386060, lng1: 99.945773 };
   var showSat = true;
@@ -673,8 +709,8 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
     $("f-other-plot").hidden = v !== "__other";
     $("f-other-coord").hidden = v !== "__other";
     if (!p) { h.textContent = v === "__other" ? "กรอกชื่อแปลงและพิกัดด้านล่าง" : "เลือกแปลงเพื่อให้ขึ้นในแผนที่"; return; }
-    var st = parcelStats()[p.id];
-    h.textContent = "เนื้อที่ตามแผนที่ " + (p.rai != null ? raiTxt(p.rai) + " ไร่" : "ไม่ระบุ") + " · เก็บแล้ว " + raiTxt(st ? st.rai : 0) + " ไร่";
+    var st = parcelStats()[p.id], pct = parcelPct(p, st);
+    h.textContent = "เนื้อที่ตามแผนที่ " + (p.rai != null ? raiTxt(p.rai) + " ไร่" : "ไม่ระบุ") + " · เก็บแล้ว " + raiTxt(st ? st.rai : 0) + " ไร่ · " + pctTxt(pct);
   }
   fillParcelSelect();
   $("f-parcel").addEventListener("change", onParcelChange);
@@ -687,25 +723,74 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
   function statusOf(st) { return st && st.done ? "done" : st ? "prog" : "none"; }
   function selectParcel(id) { selectedParcel = selectedParcel === id ? null : id; renderMap(); }
 
+  /* ---------- Google Maps (ฝัง iframe ไม่ต้องใช้ API key) ---------- */
+  function parcelsCenter() {
+    var lat = 0, lng = 0, n = 0;
+    PARCELS.forEach(function (p) { p.ring.forEach(function (q) { lng += q[0]; lat += q[1]; n++; }); });
+    if (!n) return { lat: 18.4019, lng: 99.9294 };
+    return { lat: lat / n, lng: lng / n };
+  }
+  function googleMapSrc() {
+    var m = /[?&]mid=([A-Za-z0-9_-]+)/.exec(mapUrl || "");
+    if (m) return "https://www.google.com/maps/d/embed?mid=" + m[1] + "&hl=th";
+    var c = parcelsCenter();
+    return "https://maps.google.com/maps?q=" + c.lat.toFixed(5) + "," + c.lng.toFixed(5) + "&t=k&z=15&hl=th&output=embed";
+  }
+  function buildGoogleFrame() {
+    var wrap = el("div", { class: "gmap" });
+    var f = document.createElement("iframe");
+    f.src = googleMapSrc();
+    f.title = "Google Maps";
+    f.loading = "lazy";
+    f.setAttribute("referrerpolicy", "no-referrer-when-downgrade");
+    f.style.cssText = "width:100%;aspect-ratio:16/10;border:0;border-radius:4px;display:block";
+    wrap.appendChild(f);
+    wrap.appendChild(el("p", { class: "hint", style: "margin:8px 0 0" },
+      /[?&]mid=/.test(mapUrl || "")
+        ? "แสดงแผนที่ Google My Maps ของโครงการ (ต้องแชร์เป็น 'ทุกคนที่มีลิงก์') — ขอบแปลงอยู่ใน My Maps"
+        : "Google Maps ภาพดาวเทียมของพื้นที่ — ถ้าต้องการเห็นขอบเขตแปลงบน Google Maps ให้วางลิงก์ My Maps ด้านล่าง"));
+    return wrap;
+  }
+
+  /* ความคืบหน้าของแปลง = ไร่ที่บันทึกแล้ว / ไร่ตามแผนที่ (KMZ) */
+  function parcelPct(p, st) {
+    if (!p) return null;
+    if (st && st.done && p.rai > 0) return 100;
+    if (!(p.rai > 0)) return null;
+    return Math.max(0, Math.min(100, ((st && st.rai) || 0) / p.rai * 100));
+  }
+  /* ไล่สีตาม % : 0% = เหลืองอำพัน → 100% = เขียวเข้ม */
+  function pctColor(pct) {
+    if (pct == null) return "#8c8c8c";
+    var t = Math.max(0, Math.min(1, pct / 100));
+    var hue = 45 + (132 - 45) * t;
+    return "hsl(" + Math.round(hue) + ", 78%, " + Math.round(52 - 6 * t) + "%)";
+  }
+  function pctTxt(pct) { return pct == null ? "ไม่มีข้อมูลพื้นที่" : nf(pct, 0) + "%"; }
+
   function renderMap() {
     var box = $("mapbox"), list = $("plotlist"), info = $("parcel-info"), sum = $("map-summary");
     box.textContent = ""; list.textContent = ""; info.textContent = "";
     var stats = parcelStats(), all = plots();
 
-    var totRai = 0, doneRai = 0, doneN = 0;
+    var totRai = 0, doneRai = 0, doneN = 0, cutRai = 0;
     PARCELS.forEach(function (p) {
       totRai += p.rai || 0;
       var st = stats[p.id];
+      if (st) cutRai += Math.min(st.rai || 0, p.rai != null ? p.rai : (st.rai || 0));
       if (st && st.done) { doneN++; doneRai += p.rai || 0; }
     });
+    var overall = totRai ? Math.min(100, cutRai / totRai * 100) : 0;
     sum.textContent = PARCELS.length
-      ? "เสร็จสิ้น " + doneN + " จาก " + PARCELS.length + " แปลง · " + raiTxt(doneRai) + " จาก " + raiTxt(totRai) + " ไร่ตามแผนที่"
+      ? "ความคืบหน้ารวม " + nf(overall, 0) + "% · เสร็จสิ้น " + doneN + " จาก " + PARCELS.length + " แปลง · " + raiTxt(doneRai) + " จาก " + raiTxt(totRai) + " ไร่ตามแผนที่"
       : "";
 
-    if (!PARCELS.length) {
+    if (mapMode === "google") {
+      box.appendChild(buildGoogleFrame());
+    } else if (!PARCELS.length) {
       box.appendChild(el("div", { class: "empty" }, el("strong", { text: "ไม่พบข้อมูลขอบเขตแปลง" }), "ข้อมูลจากไฟล์ KMZ โหลดไม่สำเร็จ"));
     } else {
-      var W = 600, P = 22;
+      var W = 720, P = 22;
       var midLat = 0, n = 0;
       PARCELS.forEach(function (p) { p.ring.forEach(function (q) { midLat += q[1]; n++; }); });
       midLat /= n;
@@ -716,15 +801,30 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
         if (x < minX) minX = x; if (x > maxX) maxX = x;
         if (y < minY) minY = y; if (y > maxY) maxY = y;
       }
-      PARCELS.forEach(function (p) { p.ring.forEach(function (q) { grow(q[0], q[1]); }); });
-      grow(SAT.lng0, SAT.lat0); grow(SAT.lng1, SAT.lat1);
+      /* ขอบเขตผังคิดจากแปลงที่อยู่ในภาพดาวเทียม เพื่อไม่ให้แปลงที่อยู่นอกภาพ (เช่น P20)
+         ดึงขอบเขตจนเกิดแถบว่างขนาดใหญ่ */
+      var inView = PARCELS.filter(function (p) {
+        if (!showSat) return true;
+        var lo = 1e9, hi = -1e9, za = 1e9, zb = -1e9;
+        p.ring.forEach(function (q) {
+          if (q[0] < lo) lo = q[0]; if (q[0] > hi) hi = q[0];
+          if (q[1] < za) za = q[1]; if (q[1] > zb) zb = q[1];
+        });
+        return hi >= SAT.lng0 && lo <= SAT.lng1 && zb >= SAT.lat1 && za <= SAT.lat0;
+      });
+      if (!inView.length) inView = PARCELS;
+      inView.forEach(function (p) { p.ring.forEach(function (q) { grow(q[0], q[1]); }); });
+      var moved = false, drag = null;
       var sc = (W - 2 * P) / (maxX - minX);
-      var H = Math.max(360, Math.min(700, Math.round((maxY - minY) * sc + 2 * P)));
+      /* ใช้สัดส่วนตามพิกัดจริง ไม่บังคับความสูงขั้นต่ำ (เดิมเติมแถบว่างด้านล่างทำให้ผังดูไม่สมส่วน) */
+      var H = Math.round((maxY - minY) * sc + 2 * P);
       function px(lng) { return P + (lng * kx - minX) * sc; }
       function py(lat) { return P + (-lat - minY) * sc; }
 
-      var svg = s("svg", { viewBox: "0 0 " + W + " " + H, role: "group", "aria-label": "ผังขอบเขตแปลงจากไฟล์ KMZ" });
-      svg.appendChild(s("rect", { x: 0, y: 0, width: W, height: H, rx: 4, fill: "var(--surface-2)" }));
+      var svg = s("svg", { viewBox: "0 0 " + W + " " + H, role: "group", "aria-label": "ผังขอบเขตแปลงจากไฟล์ KMZ (ซูมและเลื่อนได้)" });
+      var vg = s("g", {});
+      svg.appendChild(vg);
+      vg.appendChild(s("rect", { x: 0, y: 0, width: W, height: H, rx: 4, fill: "var(--surface-2)" }));
       if (showSat) {
         var im = s("image", {
           x: px(SAT.lng0), y: py(SAT.lat0),
@@ -732,35 +832,42 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
           preserveAspectRatio: "none"
         });
         im.setAttribute("href", SAT.src);
-        svg.appendChild(im);
+        vg.appendChild(im);
       } else {
-        for (var g = 1; g < 6; g++) svg.appendChild(s("line", { x1: g * W / 6, y1: 0, x2: g * W / 6, y2: H, stroke: "var(--line)", "stroke-width": 1 }));
-        for (var h = 1; h < 6; h++) svg.appendChild(s("line", { x1: 0, y1: h * H / 6, x2: W, y2: h * H / 6, stroke: "var(--line)", "stroke-width": 1 }));
+        for (var g = 1; g < 6; g++) vg.appendChild(s("line", { x1: g * W / 6, y1: 0, x2: g * W / 6, y2: H, stroke: "var(--line)", "stroke-width": 1 }));
+        for (var h = 1; h < 6; h++) vg.appendChild(s("line", { x1: 0, y1: h * H / 6, x2: W, y2: h * H / 6, stroke: "var(--line)", "stroke-width": 1 }));
       }
 
       var order = PARCELS.slice().sort(function (a, b) { return (a.id === selectedParcel ? 1 : 0) - (b.id === selectedParcel ? 1 : 0); });
       order.forEach(function (p) {
-        var k = statusOf(stats[p.id]), sel = p.id === selectedParcel;
+        var st = stats[p.id], sel = p.id === selectedParcel, pct = parcelPct(p, st);
         var d = "M" + p.ring.map(function (q) { return px(q[0]).toFixed(1) + "," + py(q[1]).toFixed(1); }).join("L") + "Z";
-        if (showSat) svg.appendChild(s("path", { d: d, fill: "none", stroke: "rgba(0,0,0,.6)", "stroke-width": sel ? 5.5 : 3.6, "stroke-linejoin": "round", "pointer-events": "none" }));
-        var col = showSat ? SATC[k] : COLORS[k];
-        var fo = showSat ? (k === "none" ? 0.02 : 0.35) : FILLOP[k];
+        if (showSat) vg.appendChild(s("path", { d: d, fill: "none", stroke: "rgba(0,0,0,.6)", "stroke-width": sel ? 5.5 : 3.6, "stroke-linejoin": "round", "pointer-events": "none" }));
+        var col = pctColor(pct);
+        /* ยิ่ง % สูง ยิ่งทึบ เพื่อให้เห็นความคืบหน้าชัดบนภาพดาวเทียม */
+        var fo = showSat ? (pct ? 0.22 + 0.33 * (pct / 100) : 0.05) : (pct ? 0.3 + 0.5 * (pct / 100) : 0.16);
         var path = s("path", {
           d: d, fill: col, "fill-opacity": fo, stroke: sel ? (showSat ? "#ffffff" : "var(--fg)") : col,
           "stroke-width": sel ? 3 : 1.6, "stroke-linejoin": "round", tabindex: 0, role: "button",
-          "aria-label": p.label + " " + STATUS_TXT[k], style: "cursor:pointer"
+          "aria-label": p.label + " " + pctTxt(pct), style: "cursor:pointer"
         });
-        path.appendChild(s("title", {}, p.label + (p.rai != null ? " · " + raiTxt(p.rai) + " ไร่" : "") + " · " + STATUS_TXT[k]));
-        path.addEventListener("click", function () { selectParcel(p.id); });
+        path.appendChild(s("title", {}, p.label + (p.rai != null ? " · " + raiTxt(p.rai) + " ไร่" : "") + " · " + pctTxt(pct) + (st ? " · เก็บแล้ว " + raiTxt(st.rai) + " ไร่" : "")));
+        path.addEventListener("click", function () { if (moved) return; selectParcel(p.id); });
         path.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); selectParcel(p.id); } });
-        svg.appendChild(path);
+        vg.appendChild(path);
       });
       PARCELS.forEach(function (p) {
-        svg.appendChild(s("text", {
-          x: px(p.cLng), y: py(p.cLat) + 3.5, "text-anchor": "middle", "font-size": 10,
+        var pct = parcelPct(p, stats[p.id]);
+        vg.appendChild(s("text", {
+          x: px(p.cLng), y: py(p.cLat) + 3, "text-anchor": "middle", "font-size": 10,
           fill: showSat ? "#ffffff" : "var(--fg)", stroke: showSat ? "rgba(0,0,0,.75)" : "var(--surface-2)",
           "stroke-width": 3, "paint-order": "stroke", "pointer-events": "none", "font-family": "Sarabun, sans-serif"
         }, p.id));
+        if (pct != null) vg.appendChild(s("text", {
+          x: px(p.cLng), y: py(p.cLat) + 13.5, "text-anchor": "middle", "font-size": 9, "font-weight": 600,
+          fill: showSat ? "#ffffff" : "var(--fg)", stroke: showSat ? "rgba(0,0,0,.75)" : "var(--surface-2)",
+          "stroke-width": 3, "paint-order": "stroke", "pointer-events": "none", "font-family": "Sarabun, sans-serif"
+        }, nf(pct, 0) + "%"));
       });
       var bar = 500 / 111320 * sc, bw = Math.max(bar + 24, 72);
       svg.appendChild(s("rect", { x: 8, y: H - 46, width: bw, height: 38, rx: 4, fill: "var(--surface-2)", "fill-opacity": 0.88 }));
@@ -772,10 +879,100 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
       svg.appendChild(s("text", { x: W - 14, y: 25, "text-anchor": "end", "font-size": 12, fill: "var(--fg)", "font-family": "Sarabun, sans-serif" }, "เหนือ ↑"));
       box.appendChild(svg);
 
-      var lg = el("div", { class: "legend" + (showSat ? " sat" : "") });
-      ["done", "prog", "none"].forEach(function (k) {
-        lg.appendChild(el("span", { class: "lg" }, el("i", { class: "sw " + k }), STATUS_TXT[k]));
+      /* ---------- ซูม / เลื่อนแผนที่ ---------- */
+      function clampView() {
+        if (mapView.k <= 1.001) { mapView.k = 1; mapView.x = 0; mapView.y = 0; return; }
+        mapView.x = Math.min(0, Math.max(W - W * mapView.k, mapView.x));
+        mapView.y = Math.min(0, Math.max(H - H * mapView.k, mapView.y));
+      }
+      function applyView() {
+        vg.setAttribute("transform", "translate(" + mapView.x.toFixed(2) + " " + mapView.y.toFixed(2) + ") scale(" + mapView.k.toFixed(4) + ")");
+      }
+      function toView(cx, cy) {
+        var r = svg.getBoundingClientRect();
+        return { x: (cx - r.left) / r.width * W, y: (cy - r.top) / r.height * H };
+      }
+      function zoomAt(factor, cx, cy) {
+        var k2 = Math.max(1, Math.min(8, mapView.k * factor));
+        var ratio = k2 / mapView.k;
+        if (ratio === 1) return;
+        mapView.x = cx - (cx - mapView.x) * ratio;
+        mapView.y = cy - (cy - mapView.y) * ratio;
+        mapView.k = k2;
+        clampView();
+        applyView();
+      }
+      clampView();
+      applyView();
+
+      svg.addEventListener("wheel", function (e) {
+        e.preventDefault();
+        var pt = toView(e.clientX, e.clientY);
+        zoomAt(e.deltaY < 0 ? 1.25 : 1 / 1.25, pt.x, pt.y);
+      }, { passive: false });
+
+      var pointers = {}, pinch = null;
+      function pointerList() { return Object.keys(pointers).map(function (k) { return pointers[k]; }); }
+      svg.addEventListener("pointerdown", function (e) {
+        pointers[e.pointerId] = { x: e.clientX, y: e.clientY };
+        if (pointerList().length === 2) {
+          drag = null;
+          var ps = pointerList();
+          pinch = { d: Math.hypot(ps[0].x - ps[1].x, ps[0].y - ps[1].y) };
+        } else if (pointerList().length === 1 && mapView.k > 1) {
+          drag = { x: e.clientX, y: e.clientY, ox: mapView.x, oy: mapView.y };
+          try { svg.setPointerCapture(e.pointerId); } catch (err) {}
+        }
       });
+      svg.addEventListener("pointermove", function (e) {
+        if (pointers[e.pointerId]) pointers[e.pointerId] = { x: e.clientX, y: e.clientY };
+        var ps = pointerList();
+        if (ps.length === 2 && pinch) {
+          var d = Math.hypot(ps[0].x - ps[1].x, ps[0].y - ps[1].y);
+          if (pinch.d > 0) {
+            var mid = toView((ps[0].x + ps[1].x) / 2, (ps[0].y + ps[1].y) / 2);
+            zoomAt(d / pinch.d, mid.x, mid.y);
+          }
+          pinch.d = d;
+          return;
+        }
+        if (!drag) return;
+        var r = svg.getBoundingClientRect();
+        var dx = (e.clientX - drag.x) / r.width * W;
+        var dy = (e.clientY - drag.y) / r.height * H;
+        if (Math.abs(dx) > 2 || Math.abs(dy) > 2) moved = true;
+        mapView.x = drag.ox + dx;
+        mapView.y = drag.oy + dy;
+        clampView();
+        applyView();
+      });
+      function endPointer(e) {
+        delete pointers[e.pointerId];
+        drag = null;
+        if (pointerList().length < 2) pinch = null;
+        if (moved) setTimeout(function () { moved = false; }, 0);
+      }
+      svg.addEventListener("pointerup", endPointer);
+      svg.addEventListener("pointercancel", endPointer);
+
+      var zc = el("div", { class: "mapzoom" });
+      [["+", "ซูมเข้า", function () { zoomAt(1.4, W / 2, H / 2); }],
+       ["−", "ซูมออก", function () { zoomAt(1 / 1.4, W / 2, H / 2); }],
+       ["⟲", "ย้อนกลับ", function () { mapView.k = 1; mapView.x = 0; mapView.y = 0; clampView(); applyView(); }]
+      ].forEach(function (spec) {
+        var b = el("button", { type: "button", title: spec[1], "aria-label": spec[1], text: spec[0] });
+        b.addEventListener("click", spec[2]);
+        zc.appendChild(b);
+      });
+      box.appendChild(zc);
+
+      var lg = el("div", { class: "legend" + (showSat ? " sat" : "") });
+      [0, 25, 50, 75, 100].forEach(function (v) {
+        lg.appendChild(el("span", { class: "lg" }, el("i", { class: "sw", style: "background:" + pctColor(v) }), v + "%"));
+      });
+      if (PARCELS.some(function (p) { return !(p.rai > 0); })) {
+        lg.appendChild(el("span", { class: "lg" }, el("i", { class: "sw", style: "background:" + pctColor(null) }), "ไม่มีข้อมูลพื้นที่"));
+      }
       var cb = el("input", { type: "checkbox", id: "f-sat" });
       cb.checked = showSat;
       cb.addEventListener("change", function () {
@@ -789,7 +986,7 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 
     var sp = parcelById(selectedParcel);
     if (sp) {
-      var st = stats[sp.id], k = statusOf(st);
+      var st = stats[sp.id], pct = parcelPct(sp, st);
       var bn = el("button", { type: "button", class: "small", text: "บันทึกแปลงนี้" });
       bn.addEventListener("click", function () {
         $("f-parcel").value = sp.id;
@@ -802,7 +999,8 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
       ];
       if (sp.date) lines.push("ข้อมูลในไฟล์ KMZ: วันเก็บเกี่ยว " + fmtDate(sp.date.replace(/\//g, "-")) + " (ยังไม่นับเป็นเสร็จสิ้น)");
       var box2 = el("div", { class: "pinfo" },
-        el("div", null, el("strong", { text: sp.label + " " }), el("span", { class: "pill " + (k === "done" ? "done" : "prog"), text: STATUS_TXT[k] })));
+        el("div", null, el("strong", { text: sp.label + " " }), el("span", { class: "pill " + (pct >= 100 ? "done" : pct > 0 ? "prog" : "none"), text: pctTxt(pct) })));
+      box2.appendChild(el("div", { class: "pbar" }, el("i", { style: "width:" + (pct || 0) + "%;background:" + pctColor(pct) })));
       lines.forEach(function (t) { box2.appendChild(el("div", { class: "mt", text: t })); });
       box2.appendChild(bn);
       info.appendChild(box2);
@@ -811,12 +1009,13 @@ select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
     }
 
     PARCELS.forEach(function (p) {
-      var st = stats[p.id], k = statusOf(st);
+      var st = stats[p.id], pct = parcelPct(p, st);
       var b = el("button", { type: "button", class: "rowbtn" },
-        el("span", { class: "nm" }, p.label + " ", el("span", { class: "pill " + (k === "done" ? "done" : k === "prog" ? "prog" : "none"), text: STATUS_TXT[k] })),
+        el("span", { class: "nm" }, p.label + " ", el("span", { class: "pill " + (pct >= 100 ? "done" : pct > 0 ? "prog" : "none"), text: pctTxt(pct) })),
         el("span", { class: "mt", text: raiTxt(st ? st.rai : 0) + " / " + (p.rai != null ? raiTxt(p.rai) : "-") + " ไร่" }));
       b.addEventListener("click", function () { selectParcel(p.id); });
-      list.appendChild(el("li", { class: p.id === selectedParcel ? "sel" : "" }, b));
+      list.appendChild(el("li", { class: p.id === selectedParcel ? "sel" : "" }, b,
+        el("div", { class: "pbar" }, el("i", { style: "width:" + (pct || 0) + "%;background:" + pctColor(pct) }))));
     });
     all.filter(function (p) { return !p.parcel; }).forEach(function (p) {
       list.appendChild(el("li", { class: "other" },
